@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ready_pro/models/event.dart';
 import 'package:ready_pro/models/user_event.dart';
+import 'package:ready_pro/models/user.dart';
 import 'package:ready_pro/repositories/event_repository.dart';
 import 'package:ready_pro/core/enums.dart';
 
@@ -45,7 +46,6 @@ class SupabaseEventRepository implements EventRepository {
     required UserRole role,
   }) async {
     try {
-      // 1. Находим пользователя по email
       final userData = await _client
           .from('profiles')
           .select('id')
@@ -54,7 +54,6 @@ class SupabaseEventRepository implements EventRepository {
       
       final userId = userData['id'];
 
-      // 2. Добавляем его в event_participants
       await _client.from('event_participants').upsert({
         'event_id': eventId,
         'user_id': userId,
@@ -67,6 +66,19 @@ class SupabaseEventRepository implements EventRepository {
       }
       rethrow;
     }
+  }
+
+  @override
+  Future<List<Profile>> getEventParticipants(String eventId, {UserRole? role}) async {
+    var query = _client.from('event_participants').select('profiles(*)').eq('event_id', eventId);
+    
+    if (role != null) {
+      query = query.eq('role', role.name);
+    }
+    
+    final response = await query;
+    final List<dynamic> data = response as List<dynamic>;
+    return data.map((item) => Profile.fromJson(item['profiles'])).toList();
   }
 
   @override

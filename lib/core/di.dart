@@ -8,6 +8,8 @@ import 'package:ready_pro/repositories/section_repository.dart';
 import 'package:ready_pro/repositories/supabase_section_repository.dart';
 import 'package:ready_pro/repositories/talk_repository.dart';
 import 'package:ready_pro/repositories/supabase_talk_repository.dart';
+import 'package:ready_pro/repositories/task_repository.dart';
+import 'package:ready_pro/repositories/supabase_task_repository.dart';
 
 final getIt = GetIt.instance;
 
@@ -28,5 +30,9 @@ void setupDI() {
 
   getIt.registerLazySingleton<TalkRepository>(
     () => SupabaseTalkRepository(getIt<SupabaseClient>()),
+  );
+
+  getIt.registerLazySingleton<TaskRepository>(
+    () => SupabaseTaskRepository(getIt<SupabaseClient>()),
   );
 }
