@@ -23,7 +23,6 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
   
-  // Мапы для хранения контроллеров конкретных ивентов и секций
   final Map<String, TextEditingController> _eventRoleControllers = {};
   final Map<String, TextEditingController> _eventSectionNameControllers = {};
   final Map<String, TextEditingController> _sectionTalkTitleControllers = {};
@@ -46,15 +45,9 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _nameController.dispose();
-    for (var c in _eventRoleControllers.values) {
-      c.dispose();
-    }
-    for (var c in _eventSectionNameControllers.values) {
-      c.dispose();
-    }
-    for (var c in _sectionTalkTitleControllers.values) {
-      c.dispose();
-    }
+    for (var c in _eventRoleControllers.values) c.dispose();
+    for (var c in _eventSectionNameControllers.values) c.dispose();
+    for (var c in _sectionTalkTitleControllers.values) c.dispose();
     super.dispose();
   }
 
@@ -70,14 +63,12 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
     if (_currentUser == null) return;
     try {
       final events = await getIt<EventRepository>().getUserEvents(_currentUser!.id);
-      if (mounted) {
-        setState(() => _myEvents = events);
-      }
+      if (mounted) setState(() => _myEvents = events);
       for (var event in events) {
         _loadSections(event.eventId);
       }
     } catch (e) {
-      print('Ошибка загрузки моих ивентов: $e');
+      print('Network Error: $e');
     }
   }
 
@@ -86,38 +77,29 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
       final sections = await getIt<SectionRepository>().getSectionsByEvent(eventId);
       if (mounted) {
         setState(() => _eventSections[eventId] = sections);
-        for (var section in sections) {
-          _loadTalks(section.id);
-        }
+        for (var section in sections) _loadTalks(section.id);
       }
     } catch (e) {
-      print('Ошибка загрузки секций: $e');
+      print('Error loading sections: $e');
     }
   }
 
   Future<void> _loadTalks(String sectionId) async {
     try {
       final talks = await getIt<TalkRepository>().getTalksBySection(sectionId);
-      if (mounted) {
-        setState(() => _sectionTalks[sectionId] = talks);
-      }
+      if (mounted) setState(() => _sectionTalks[sectionId] = talks);
     } catch (e) {
-      print('Ошибка загрузки докладов: $e');
+      print('Error loading talks: $e');
     }
   }
 
   Future<void> _handleAssignRole(String eventId) async {
     final controller = _eventRoleControllers[eventId];
     if (controller == null || controller.text.isEmpty) return;
-
     try {
-      await getIt<EventRepository>().assignRole(
-        eventId: eventId,
-        email: controller.text.trim(),
-        role: _selectedRoleForAssign,
-      );
+      await getIt<EventRepository>().assignRole(eventId: eventId, email: controller.text.trim(), role: _selectedRoleForAssign);
       controller.clear();
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Роль успешно назначена')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Роль назначена')));
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
     }
@@ -126,45 +108,32 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
   Future<void> _handleCreateSection(String eventId) async {
     final controller = _eventSectionNameControllers[eventId];
     if (controller == null || controller.text.isEmpty) return;
-
     try {
-      await getIt<SectionRepository>().createSection(Section(
-        id: '',
-        eventId: eventId,
-        name: controller.text.trim(),
-        progress: 0,
-      ));
+      await getIt<SectionRepository>().createSection(Section(id: '', eventId: eventId, name: controller.text.trim(), progress: 0));
       controller.clear();
       _loadSections(eventId);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка создания секции: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
     }
   }
 
   Future<void> _handleCreateTalk(String sectionId, String eventId) async {
     final controller = _sectionTalkTitleControllers[sectionId];
     if (controller == null || controller.text.isEmpty) return;
-
     try {
-      await getIt<TalkRepository>().createTalk(Talk(
-        id: '',
-        sectionId: sectionId,
-        speakerId: _currentUser!.id,
-        title: controller.text.trim(),
-        status: TalkStatus.draft,
-      ));
+      await getIt<TalkRepository>().createTalk(Talk(id: '', sectionId: sectionId, speakerId: _currentUser!.id, title: controller.text.trim(), status: TalkStatus.draft));
       controller.clear();
       _loadTalks(sectionId);
-      _loadSections(eventId); // Чтобы обновить прогресс секции
+      _loadSections(eventId);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка создания доклада: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('ГотовностьПро: Управление')),
+      appBar: AppBar(title: const Text('ГотовностьПро: Панель управления')),
       body: _isLoading 
         ? const Center(child: CircularProgressIndicator())
         : Padding(
@@ -177,7 +146,7 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
   Widget _buildAuthForm() {
     return Column(
       children: [
-        TextField(controller: _nameController, decoration: const InputDecoration(labelText: 'ФИО')),
+        TextField(controller: _nameController, decoration: const InputDecoration(labelText: 'ФИО (для регистрации)')),
         TextField(controller: _emailController, decoration: const InputDecoration(labelText: 'Email')),
         TextField(controller: _passwordController, decoration: const InputDecoration(labelText: 'Пароль'), obscureText: true),
         const SizedBox(height: 20),
@@ -219,20 +188,33 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
   Widget _buildMainPanel() {
     return Column(
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('Привет, ${_currentUser!.fullName}!'),
-            TextButton(onPressed: () => getIt<AuthRepository>().signOut().then((_) => setState(() => _currentUser = null)), child: const Text('Выйти')),
-          ],
+        Card(
+          elevation: 4,
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundImage: _currentUser?.avatarUrl != null && _currentUser!.avatarUrl!.startsWith('http')
+                  ? NetworkImage(_currentUser!.avatarUrl!)
+                  : null,
+              child: _currentUser?.avatarUrl == null || !_currentUser!.avatarUrl!.startsWith('http')
+                  ? const Icon(Icons.person)
+                  : null,
+            ),
+            title: Text(_currentUser?.fullName ?? 'Пользователь'),
+            subtitle: Text(_currentUser?.email ?? ''),
+            trailing: IconButton(
+              icon: const Icon(Icons.logout, color: Colors.redAccent),
+              onPressed: () => getIt<AuthRepository>().signOut().then((_) => setState(() => _currentUser = null)),
+            ),
+          ),
         ),
+        const SizedBox(height: 10),
         ElevatedButton.icon(
           onPressed: () async {
-            final newEvent = Event(id: '', title: 'Мероприятие ${DateTime.now().second}', status: EventStatus.preparation, createdBy: _currentUser!.id);
+            final newEvent = Event(id: '', title: 'Новое мероприятие ${DateTime.now().second}', status: EventStatus.preparation, createdBy: _currentUser!.id);
             await getIt<EventRepository>().createEvent(newEvent);
             _loadMyEvents();
           }, 
-          icon: const Icon(Icons.add),
+          icon: const Icon(Icons.add_circle_outline),
           label: const Text('Создать мероприятие'),
         ),
         const Divider(),
@@ -242,8 +224,6 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
             itemBuilder: (context, index) {
               final e = _myEvents[index];
               final sections = _eventSections[e.eventId] ?? [];
-              
-              // Инициализация контроллеров для этого ивента
               _eventRoleControllers.putIfAbsent(e.eventId, () => TextEditingController());
               _eventSectionNameControllers.putIfAbsent(e.eventId, () => TextEditingController());
 
@@ -251,7 +231,7 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
                 margin: const EdgeInsets.symmetric(vertical: 8),
                 child: ExpansionTile(
                   title: Text(e.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text('Ваша роль: ${e.role.name.toUpperCase()}'),
+                  subtitle: Text('Роль: ${e.role.name.toUpperCase()}'),
                   children: [
                     Padding(
                       padding: const EdgeInsets.all(12.0),
@@ -259,10 +239,10 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (e.role == UserRole.organizer) ...[
-                            const Text('Управление доступом:', style: TextStyle(color: Colors.blueGrey, fontSize: 12)),
+                            const Text('Управление участниками (Email):', style: TextStyle(fontSize: 12, color: Colors.blueGrey)),
                             Row(
                               children: [
-                                Expanded(child: TextField(controller: _eventRoleControllers[e.eventId], decoration: const InputDecoration(hintText: 'Email пользователя'))),
+                                Expanded(child: TextField(controller: _eventRoleControllers[e.eventId], decoration: const InputDecoration(hintText: 'email@example.com'))),
                                 DropdownButton<UserRole>(
                                   value: _selectedRoleForAssign,
                                   onChanged: (val) => setState(() => _selectedRoleForAssign = val!),
@@ -272,21 +252,19 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
                                 IconButton(onPressed: () => _handleAssignRole(e.eventId), icon: const Icon(Icons.person_add, color: Colors.blue)),
                               ],
                             ),
-                            const SizedBox(height: 10),
-                            const Text('Добавить новую секцию:', style: TextStyle(color: Colors.blueGrey, fontSize: 12)),
+                            const Text('Добавить секцию:', style: TextStyle(fontSize: 12, color: Colors.blueGrey)),
                             Row(
                               children: [
-                                Expanded(child: TextField(controller: _eventSectionNameControllers[e.eventId], decoration: const InputDecoration(hintText: 'Название (напр. Дизайн)'))),
+                                Expanded(child: TextField(controller: _eventSectionNameControllers[e.eventId], decoration: const InputDecoration(hintText: 'Название секции'))),
                                 IconButton(onPressed: () => _handleCreateSection(e.eventId), icon: const Icon(Icons.add_box, color: Colors.green)),
                               ],
                             ),
                             const Divider(),
                           ],
-                          const Text('Секции и доклады:', style: TextStyle(fontWeight: FontWeight.bold)),
+                          const Text('Секции и прогресс:', style: TextStyle(fontWeight: FontWeight.bold)),
                           ...sections.map((s) {
                             _sectionTalkTitleControllers.putIfAbsent(s.id, () => TextEditingController());
                             final talks = _sectionTalks[s.id] ?? [];
-                            
                             return ExpansionTile(
                               title: Text(s.name),
                               trailing: Text('${s.progress}%', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
@@ -296,7 +274,7 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
                                     padding: const EdgeInsets.symmetric(horizontal: 16),
                                     child: Row(
                                       children: [
-                                        Expanded(child: TextField(controller: _sectionTalkTitleControllers[s.id], decoration: const InputDecoration(hintText: 'Заголовок доклада'))),
+                                        Expanded(child: TextField(controller: _sectionTalkTitleControllers[s.id], decoration: const InputDecoration(hintText: 'Добавить доклад'))),
                                         IconButton(onPressed: () => _handleCreateTalk(s.id, e.eventId), icon: const Icon(Icons.playlist_add)),
                                       ],
                                     ),
