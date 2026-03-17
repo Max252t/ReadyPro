@@ -2,13 +2,27 @@ import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import 'package:ready_pro/models/user.dart';
 import 'package:ready_pro/repositories/auth_repository.dart';
 
+class AuthException implements Exception {
+  final String message;
+  AuthException(this.message);
+  @override
+  String toString() => message;
+}
+
 class SupabaseAuthRepository implements AuthRepository {
   final supabase.SupabaseClient _client;
 
   SupabaseAuthRepository(this._client);
 
+  void _validatePassword(String password) {
+    if (password.length < 6) {
+      throw AuthException('Пароль должен содержать не менее 6 символов');
+    }
+  }
+
   @override
   Future<Profile?> signIn({required String email, required String password}) async {
+    _validatePassword(password);
     try {
       final response = await _client.auth.signInWithPassword(
         email: email,
@@ -20,6 +34,9 @@ class SupabaseAuthRepository implements AuthRepository {
       }
       return null;
     } catch (e) {
+      if (e is supabase.AuthException) {
+        throw AuthException(e.message);
+      }
       rethrow;
     }
   }
@@ -30,6 +47,7 @@ class SupabaseAuthRepository implements AuthRepository {
     required String password,
     required String fullName,
   }) async {
+    _validatePassword(password);
     try {
       final response = await _client.auth.signUp(
         email: email,
@@ -56,6 +74,9 @@ class SupabaseAuthRepository implements AuthRepository {
       }
       return null;
     } catch (e) {
+      if (e is supabase.AuthException) {
+        throw AuthException(e.message);
+      }
       rethrow;
     }
   }
@@ -79,7 +100,11 @@ class SupabaseAuthRepository implements AuthRepository {
     return _client.auth.onAuthStateChange.asyncMap((event) async {
       final user = event.session?.user;
       if (user != null) {
-        return await _getProfile(user.id);
+        try {
+          return await _getProfile(user.id);
+        } catch (_) {
+          return null;
+        }
       }
       return null;
     });
