@@ -1,11 +1,19 @@
 import 'package:ready_pro/models/event.dart';
 import 'package:ready_pro/models/user_event.dart';
+import 'package:ready_pro/core/enums.dart';
 
 abstract class EventRepository {
   Future<List<Event>> getEvents();
-  Future<List<UserEvent>> getUserEvents(String userId); // Новый метод
+  Future<List<UserEvent>> getUserEvents(String userId);
   Future<Event> getEventById(String id);
   Future<void> createEvent(Event event);
   Future<void> updateEvent(Event event);
   Future<void> deleteEvent(String id);
+  
+  // Новый метод для назначения ролей
+  Future<void> assignRole({
+    required String eventId,
+    required String email,
+    required UserRole role,
+  });
 }

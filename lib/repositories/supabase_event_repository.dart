@@ -26,7 +26,6 @@ class SupabaseEventRepository implements EventRepository {
   @override
   Future<List<UserEvent>> getUserEvents(String userId) async {
     try {
-      // Вызываем RPC функцию из вашей базы данных
       final response = await _client.rpc(
         'get_user_events',
         params: {'user_uuid': userId},
@@ -35,6 +34,37 @@ class SupabaseEventRepository implements EventRepository {
       final List<dynamic> data = response as List<dynamic>;
       return data.map((json) => UserEvent.fromJson(json)).toList();
     } catch (e) {
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> assignRole({
+    required String eventId,
+    required String email,
+    required UserRole role,
+  }) async {
+    try {
+      // 1. Находим пользователя по email
+      final userData = await _client
+          .from('profiles')
+          .select('id')
+          .eq('email', email)
+          .single();
+      
+      final userId = userData['id'];
+
+      // 2. Добавляем его в event_participants
+      await _client.from('event_participants').upsert({
+        'event_id': eventId,
+        'user_id': userId,
+        'role': role.name,
+        'joined_at': DateTime.now().toIso8601String(),
+      });
+    } catch (e) {
+      if (e is PostgrestException && e.code == 'PGRST116') {
+        throw Exception('Пользователь с таким email не найден');
+      }
       rethrow;
     }
   }

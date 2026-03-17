@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import 'package:ready_pro/models/user.dart';
 import 'package:ready_pro/repositories/auth_repository.dart';
@@ -17,6 +18,26 @@ class SupabaseAuthRepository implements AuthRepository {
   void _validatePassword(String password) {
     if (password.length < 6) {
       throw AuthException('Пароль должен содержать не менее 6 символов');
+    }
+  }
+
+  Future<String?> _uploadDefaultAvatar(String userId) async {
+    try {
+      final byteData = await rootBundle.load('assets/images/avatar.png');
+      final bytes = byteData.buffer.asUint8List();
+      final fileName = '$userId/avatar.png';
+
+      // Исправлено: используем uploadBinary для загрузки байтов в Supabase Storage
+      await _client.storage.from('profile').uploadBinary(
+            fileName,
+            bytes,
+            fileOptions: const supabase.FileOptions(upsert: true, contentType: 'image/png'),
+          );
+
+      return _client.storage.from('profile').getPublicUrl(fileName);
+    } catch (e) {
+      print('Error uploading default avatar: $e');
+      return null;
     }
   }
 
@@ -58,14 +79,17 @@ class SupabaseAuthRepository implements AuthRepository {
       );
 
       if (response.user != null) {
+        final userId = response.user!.id;
+        final avatarUrl = await _uploadDefaultAvatar(userId);
         final now = DateTime.now().toIso8601String();
         
         final profileData = {
-          'id': response.user!.id,
+          'id': userId,
           'full_name': fullName,
           'email': email,
-          'avatar_url': 'assets/images/avatar.png',
+          'avatar_url': avatarUrl,
           'company': 'Company Name',
+          'created_at': now,
           'updated_at': now,
         };
 
