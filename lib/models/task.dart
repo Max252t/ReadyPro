@@ -4,9 +4,11 @@ class Task {
   final String assigneeId;
   final String assignerId;
   final String title;
-  final String description;
+  final String? description;
   final DateTime dueDate;
   final bool isCompleted;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 
   Task({
     required this.id,
@@ -14,9 +16,11 @@ class Task {
     required this.assigneeId,
     required this.assignerId,
     required this.title,
-    required this.description,
+    this.description,
     required this.dueDate,
     required this.isCompleted,
+    this.createdAt,
+    this.updatedAt,
   });
 
   factory Task.fromJson(Map<String, dynamic> json) {
@@ -29,6 +33,8 @@ class Task {
       description: json['description'],
       dueDate: DateTime.parse(json['due_date']),
       isCompleted: json['status'] ?? false,
+      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
+      updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at']) : null,
     );
   }
 

@@ -27,6 +27,7 @@ enum EventStatus {
 
 enum TalkStatus {
   draft,
+  review,
   approved,
   ready;
 
@@ -34,6 +35,22 @@ enum TalkStatus {
     return TalkStatus.values.firstWhere(
       (e) => e.name == status,
       orElse: () => TalkStatus.draft,
+    );
+  }
+}
+
+enum NotificationType {
+  event_invite,
+  task_assigned,
+  curator_assigned,
+  talk_ready,
+  question_asked,
+  system;
+
+  static NotificationType fromString(String type) {
+    return NotificationType.values.firstWhere(
+      (e) => e.name == type,
+      orElse: () => NotificationType.system,
     );
   }
 }

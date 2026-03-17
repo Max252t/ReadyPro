@@ -5,22 +5,28 @@ class Talk {
   final String sectionId;
   final String speakerId;
   final String title;
-  final String description;
+  final String? description;
   final TalkStatus status;
   final DateTime? startTime;
   final DateTime? endTime;
   final String? room;
+  final List<String> materialsUrl;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 
   Talk({
     required this.id,
     required this.sectionId,
     required this.speakerId,
     required this.title,
-    required this.description,
+    this.description,
     required this.status,
     this.startTime,
     this.endTime,
     this.room,
+    this.materialsUrl = const [],
+    this.createdAt,
+    this.updatedAt,
   });
 
   factory Talk.fromJson(Map<String, dynamic> json) {
@@ -34,6 +40,9 @@ class Talk {
       startTime: json['start_time'] != null ? DateTime.parse(json['start_time']) : null,
       endTime: json['end_time'] != null ? DateTime.parse(json['end_time']) : null,
       room: json['room'],
+      materialsUrl: json['materials_url'] != null ? List<String>.from(json['materials_url']) : [],
+      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
+      updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at']) : null,
     );
   }
 
@@ -48,6 +57,7 @@ class Talk {
       'start_time': startTime?.toIso8601String(),
       'end_time': endTime?.toIso8601String(),
       'room': room,
+      'materials_url': materialsUrl,
     };
   }
 }

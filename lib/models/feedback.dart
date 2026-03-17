@@ -3,14 +3,16 @@ class Feedback {
   final String talkId;
   final String userId;
   final int rating;
-  final String comment;
+  final String? comment;
+  final DateTime? createdAt;
 
   Feedback({
     required this.id,
     required this.talkId,
     required this.userId,
     required this.rating,
-    required this.comment,
+    this.comment,
+    this.createdAt,
   });
 
   factory Feedback.fromJson(Map<String, dynamic> json) {
@@ -20,6 +22,7 @@ class Feedback {
       userId: json['user_id'],
       rating: json['rating'],
       comment: json['comment'],
+      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
     );
   }
 

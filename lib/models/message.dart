@@ -5,6 +5,7 @@ class Message {
   final String content;
   final String? parentId;
   final DateTime createdAt;
+  final DateTime? updatedAt;
 
   Message({
     required this.id,
@@ -13,6 +14,7 @@ class Message {
     required this.content,
     this.parentId,
     required this.createdAt,
+    this.updatedAt,
   });
 
   factory Message.fromJson(Map<String, dynamic> json) {
@@ -23,6 +25,7 @@ class Message {
       content: json['content'],
       parentId: json['parent_id'],
       createdAt: DateTime.parse(json['created_at']),
+      updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at']) : null,
     );
   }
 
@@ -33,7 +36,6 @@ class Message {
       'user_id': userId,
       'content': content,
       'parent_id': parentId,
-      'created_at': createdAt.toIso8601String(),
     };
   }
 }

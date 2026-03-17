@@ -2,15 +2,23 @@ class Section {
   final String id;
   final String eventId;
   final String name;
-  final String curatorId;
+  final String? description;
+  final String? curatorId;
   final int progress;
+  final String? finalReport;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 
   Section({
     required this.id,
     required this.eventId,
     required this.name,
-    required this.curatorId,
+    this.description,
+    this.curatorId,
     required this.progress,
+    this.finalReport,
+    this.createdAt,
+    this.updatedAt,
   });
 
   factory Section.fromJson(Map<String, dynamic> json) {
@@ -18,8 +26,12 @@ class Section {
       id: json['id'],
       eventId: json['event_id'],
       name: json['name'],
+      description: json['description'],
       curatorId: json['curator_id'],
       progress: json['progress'] ?? 0,
+      finalReport: json['final_report'],
+      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
+      updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at']) : null,
     );
   }
 
@@ -28,8 +40,10 @@ class Section {
       'id': id,
       'event_id': eventId,
       'name': name,
+      'description': description,
       'curator_id': curatorId,
       'progress': progress,
+      'final_report': finalReport,
     };
   }
 }
