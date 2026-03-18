@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:ready_pro/models/user.dart';
 
 abstract class AuthRepository {
@@ -10,4 +11,7 @@ abstract class AuthRepository {
   Future<void> signOut();
   Future<Profile?> getCurrentUser();
   Stream<Profile?> get authStateChanges;
+  
+  // Новый метод для обновления аватара
+  Future<String?> updateAvatar(File imageFile);
 }

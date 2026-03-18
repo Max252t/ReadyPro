@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ready_pro/core/di.dart';
+import 'package:ready_pro/ui/auth_test_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,12 +21,10 @@ class MainApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: Text('ГотовностьПро Инициализирована'),
-        ),
-      ),
+    return MaterialApp(
+      title: 'ГотовностьПро Тест',
+      theme: ThemeData(primarySwatch: Colors.blue),
+      home: const AuthTestScreen(),
     );
   }
 }

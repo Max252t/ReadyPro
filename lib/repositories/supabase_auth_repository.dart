@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import 'package:ready_pro/models/user.dart';
 import 'package:ready_pro/repositories/auth_repository.dart';
@@ -17,6 +19,69 @@ class SupabaseAuthRepository implements AuthRepository {
   void _validatePassword(String password) {
     if (password.length < 6) {
       throw AuthException('Пароль должен содержать не менее 6 символов');
+    }
+  }
+
+  Future<String?> _uploadDefaultAvatar(String userId) async {
+    try {
+      final byteData = await rootBundle.load('assets/images/avatar.png');
+      final bytes = byteData.buffer.asUint8List();
+      final fileName = '$userId/avatar.png';
+
+      await _client.storage.from('profile').uploadBinary(
+            fileName,
+            bytes,
+            fileOptions: const supabase.FileOptions(upsert: true, contentType: 'image/png'),
+          );
+
+      return _client.storage.from('profile').getPublicUrl(fileName);
+    } catch (e) {
+      print('Error uploading default avatar: $e');
+      return null;
+    }
+  }
+
+  @override
+  Future<String?> updateAvatar(File imageFile) async {
+    try {
+      final user = _client.auth.currentUser;
+      if (user == null) return null;
+
+      final fileName = '${user.id}/avatar_${DateTime.now().millisecondsSinceEpoch}.png';
+
+      // 1. Загружаем новый файл
+      await _client.storage.from('profile').upload(
+            fileName,
+            imageFile,
+            fileOptions: const supabase.FileOptions(upsert: true, contentType: 'image/png'),
+          );
+
+      final newUrl = _client.storage.from('profile').getPublicUrl(fileName);
+
+      // 2. Получаем старый URL, чтобы найти старый файл
+      final profile = await _getProfile(user.id);
+      final oldUrl = profile?.avatarUrl;
+
+      // 3. Обновляем URL в профиле
+      await _client.from('profiles').update({'avatar_url': newUrl}).eq('id', user.id);
+
+      // 4. Удаляем старые файлы из папки пользователя (кроме нового)
+      if (oldUrl != null) {
+        final List<supabase.FileObject> files = await _client.storage.from('profile').list(path: user.id);
+        final List<String> filesToDelete = files
+            .where((file) => !newUrl.contains(file.name))
+            .map((file) => '${user.id}/${file.name}')
+            .toList();
+        
+        if (filesToDelete.isNotEmpty) {
+          await _client.storage.from('profile').remove(filesToDelete);
+        }
+      }
+
+      return newUrl;
+    } catch (e) {
+      print('Update avatar error: $e');
+      rethrow;
     }
   }
 
@@ -58,14 +123,17 @@ class SupabaseAuthRepository implements AuthRepository {
       );
 
       if (response.user != null) {
+        final userId = response.user!.id;
+        final avatarUrl = await _uploadDefaultAvatar(userId);
         final now = DateTime.now().toIso8601String();
         
         final profileData = {
-          'id': response.user!.id,
+          'id': userId,
           'full_name': fullName,
           'email': email,
-          'avatar_url': 'assets/images/avatar.png',
+          'avatar_url': avatarUrl,
           'company': 'Company Name',
+          'created_at': now,
           'updated_at': now,
         };
 
