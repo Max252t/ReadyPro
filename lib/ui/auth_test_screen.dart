@@ -1,16 +1,20 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:ready_pro/core/di.dart';
 import 'package:ready_pro/repositories/auth_repository.dart';
 import 'package:ready_pro/repositories/event_repository.dart';
 import 'package:ready_pro/repositories/section_repository.dart';
 import 'package:ready_pro/repositories/talk_repository.dart';
 import 'package:ready_pro/repositories/task_repository.dart';
+import 'package:ready_pro/repositories/feedback_repository.dart';
 import 'package:ready_pro/models/user.dart';
 import 'package:ready_pro/models/user_event.dart';
 import 'package:ready_pro/models/event.dart';
 import 'package:ready_pro/models/section.dart';
 import 'package:ready_pro/models/talk.dart';
 import 'package:ready_pro/models/task.dart';
+import 'package:ready_pro/models/feedback.dart' as model;
 import 'package:ready_pro/core/enums.dart';
 
 class AuthTestScreen extends StatefulWidget {
@@ -38,6 +42,7 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
   Map<String, List<Talk>> _sectionTalks = {};
   Map<String, List<Task>> _eventTasks = {};
   Map<String, List<Profile>> _eventParticipants = {};
+  Map<String, List<model.Feedback>> _talkFeedbacks = {};
 
   @override
   void initState() {
@@ -88,7 +93,7 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
         for (var section in sections) _loadTalks(section.id);
       }
     } catch (e) {
-      print('Error loading sections: $e');
+      print('Error: $e');
     }
   }
 
@@ -96,8 +101,18 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
     try {
       final talks = await getIt<TalkRepository>().getTalksBySection(sectionId);
       if (mounted) setState(() => _sectionTalks[sectionId] = talks);
+      for (var talk in talks) _loadFeedback(talk.id);
     } catch (e) {
-      print('Error loading talks: $e');
+      print('Error: $e');
+    }
+  }
+
+  Future<void> _loadFeedback(String talkId) async {
+    try {
+      final feed = await getIt<FeedbackRepository>().getFeedbackByTalk(talkId);
+      if (mounted) setState(() => _talkFeedbacks[talkId] = feed);
+    } catch (e) {
+      print('Error: $e');
     }
   }
 
@@ -106,7 +121,7 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
       final tasks = await getIt<TaskRepository>().getTasksByEvent(eventId);
       if (mounted) setState(() => _eventTasks[eventId] = tasks);
     } catch (e) {
-      print('Error loading tasks: $e');
+      print('Error: $e');
     }
   }
 
@@ -115,7 +130,27 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
       final participants = await getIt<EventRepository>().getEventParticipants(eventId);
       if (mounted) setState(() => _eventParticipants[eventId] = participants);
     } catch (e) {
-      print('Error loading participants: $e');
+      print('Error: $e');
+    }
+  }
+
+  Future<void> _pickAndUploadImage() async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(source: ImageSource.gallery);
+    
+    if (image != null) {
+      setState(() => _isLoading = true);
+      try {
+        final newUrl = await getIt<AuthRepository>().updateAvatar(File(image.path));
+        if (newUrl != null) {
+          await _checkUser();
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Аватар обновлен')));
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка аватара: $e')));
+      } finally {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -154,36 +189,10 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
     }
   }
 
-  Future<void> _handleCreateTalk(String sectionId, String eventId) async {
-    final controller = _sectionTalkTitleControllers[sectionId];
-    if (controller == null || controller.text.isEmpty) return;
-    try {
-      await getIt<TalkRepository>().createTalk(Talk(id: '', sectionId: sectionId, speakerId: _currentUser!.id, title: controller.text.trim(), status: TalkStatus.draft));
-      controller.clear();
-      _loadTalks(sectionId);
-      _loadSections(eventId);
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
-    }
-  }
-
-  Future<void> _handleCreateTask(String eventId, String assigneeId) async {
-    final controller = _taskTitleControllers[eventId];
-    if (controller == null || controller.text.isEmpty) return;
-    try {
-      await getIt<TaskRepository>().createTask(Task(id: '', eventId: eventId, assigneeId: assigneeId, assignerId: _currentUser!.id, title: controller.text.trim(), description: '', dueDate: DateTime.now().add(const Duration(days: 7)), isCompleted: false));
-      controller.clear();
-      _loadTasks(eventId);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Задача поставлена')));
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('ГотовностьПро: Панель управления')),
+      appBar: AppBar(title: const Text('ГотовностьПро: Полное управление')),
       body: _isLoading 
         ? const Center(child: CircularProgressIndicator())
         : Padding(
@@ -235,9 +244,17 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
       children: [
         Card(
           child: ListTile(
-            leading: CircleAvatar(backgroundImage: _currentUser?.avatarUrl != null && _currentUser!.avatarUrl!.startsWith('http') ? NetworkImage(_currentUser!.avatarUrl!) : null, child: _currentUser?.avatarUrl == null ? const Icon(Icons.person) : null),
+            leading: GestureDetector(
+              onTap: _pickAndUploadImage,
+              child: CircleAvatar(
+                backgroundImage: _currentUser?.avatarUrl != null && _currentUser!.avatarUrl!.startsWith('http') 
+                    ? NetworkImage(_currentUser!.avatarUrl!) 
+                    : null,
+                child: _currentUser?.avatarUrl == null ? const Icon(Icons.add_a_photo) : null,
+              ),
+            ),
             title: Text(_currentUser?.fullName ?? ''),
-            subtitle: Text(_currentUser?.email ?? ''),
+            subtitle: const Text('Нажмите на аватар, чтобы изменить'),
             trailing: IconButton(icon: const Icon(Icons.logout), onPressed: () => getIt<AuthRepository>().signOut().then((_) => setState(() => _currentUser = null))),
           ),
         ),
@@ -279,28 +296,24 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (e.role == UserRole.organizer) ...[
-                            const Text('Управление доступом (Email):', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                            Row(
-                              children: [
-                                Expanded(child: TextField(controller: _eventRoleControllers[e.eventId], decoration: const InputDecoration(hintText: 'user@example.com'))),
-                                DropdownButton<UserRole>(
-                                  value: _selectedRoleForAssign,
-                                  onChanged: (val) => setState(() => _selectedRoleForAssign = val!),
-                                  items: [UserRole.curator, UserRole.speaker, UserRole.participant].map((r) => DropdownMenuItem(value: r, child: Text(r.name))).toList(),
-                                ),
-                                IconButton(onPressed: () => _handleAssignRole(e.eventId), icon: const Icon(Icons.person_add, color: Colors.blue)),
-                              ],
-                            ),
-                            const Text('Добавить секцию:', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                            Row(
-                              children: [
-                                Expanded(child: TextField(controller: _eventSectionNameControllers[e.eventId], decoration: const InputDecoration(hintText: 'Название секции'))),
-                                IconButton(onPressed: () => _handleCreateSection(e.eventId), icon: const Icon(Icons.add_box, color: Colors.green)),
-                              ],
-                            ),
+                            const Text('Управление доступом:', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                            Row(children: [
+                              Expanded(child: TextField(controller: _eventRoleControllers[e.eventId], decoration: const InputDecoration(hintText: 'Email'))),
+                              DropdownButton<UserRole>(
+                                value: _selectedRoleForAssign,
+                                onChanged: (val) => setState(() => _selectedRoleForAssign = val!),
+                                items: [UserRole.curator, UserRole.speaker, UserRole.participant].map((r) => DropdownMenuItem(value: r, child: Text(r.name))).toList(),
+                              ),
+                              IconButton(onPressed: () => _handleAssignRole(e.eventId), icon: const Icon(Icons.person_add, color: Colors.blue)),
+                            ]),
+                            const Text('Новая секция:', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                            Row(children: [
+                              Expanded(child: TextField(controller: _eventSectionNameControllers[e.eventId], decoration: const InputDecoration(hintText: 'Название'))),
+                              IconButton(onPressed: () => _handleCreateSection(e.eventId), icon: const Icon(Icons.add_box, color: Colors.green)),
+                            ]),
                             const Divider(),
                           ],
-                          const Text('Секции:', style: TextStyle(fontWeight: FontWeight.bold)),
+                          const Text('Секции и доклады:', style: TextStyle(fontWeight: FontWeight.bold)),
                           ...sections.map((s) {
                             _sectionTalkTitleControllers.putIfAbsent(s.id, () => TextEditingController());
                             final talks = _sectionTalks[s.id] ?? [];
@@ -309,15 +322,13 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
                               trailing: Text('${s.progress}%', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
                               children: [
                                 if (e.role == UserRole.organizer || e.role == UserRole.curator)
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                                    child: Row(
-                                      children: [
-                                        Expanded(child: TextField(controller: _sectionTalkTitleControllers[s.id], decoration: const InputDecoration(hintText: 'Добавить доклад'))),
-                                        IconButton(onPressed: () => _handleCreateTalk(s.id, e.eventId), icon: const Icon(Icons.playlist_add)),
-                                      ],
-                                    ),
-                                  ),
+                                  Row(children: [
+                                    Expanded(child: TextField(controller: _sectionTalkTitleControllers[s.id], decoration: const InputDecoration(hintText: 'Добавить доклад'))),
+                                    IconButton(onPressed: () {
+                                      getIt<TalkRepository>().createTalk(Talk(id: '', sectionId: s.id, speakerId: _currentUser!.id, title: _sectionTalkTitleControllers[s.id]!.text, status: TalkStatus.draft))
+                                      .then((_) { _sectionTalkTitleControllers[s.id]!.clear(); _loadTalks(s.id); _loadSections(e.eventId); });
+                                    }, icon: const Icon(Icons.playlist_add)),
+                                  ]),
                                 ...talks.map((t) => ListTile(title: Text(t.title), subtitle: Text('Статус: ${t.status.name}'), dense: true)),
                               ],
                             );
@@ -329,17 +340,16 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
                             subtitle: Text('Кому: ${participants.firstWhere((p) => p.id == t.assigneeId, orElse: () => Profile(id: '', fullName: 'Загрузка...', email: '')).fullName}'),
                             trailing: Icon(t.isCompleted ? Icons.check_circle : Icons.pending, color: t.isCompleted ? Colors.green : Colors.orange),
                           )),
-                          if (e.role == UserRole.organizer || e.role == UserRole.curator) ...[
-                            const SizedBox(height: 10),
-                            const Text('Поставить задачу:', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                            TextField(controller: _taskTitleControllers[e.eventId], decoration: const InputDecoration(hintText: 'Текст задачи')),
+                          if (e.role == UserRole.organizer || e.role == UserRole.curator)
                             DropdownButton<String>(
-                              hint: const Text('Выберите исполнителя'),
+                              hint: const Text('Поставить задачу участнику'),
                               isExpanded: true,
                               items: participants.map((p) => DropdownMenuItem(value: p.id, child: Text(p.fullName))).toList(),
-                              onChanged: (val) { if (val != null) _handleCreateTask(e.eventId, val); },
+                              onChanged: (val) { if (val != null) {
+                                getIt<TaskRepository>().createTask(Task(id: '', eventId: e.eventId, assigneeId: val, assignerId: _currentUser!.id, title: _taskTitleControllers[e.eventId]!.text, description: '', dueDate: DateTime.now().add(const Duration(days: 7)), isCompleted: false))
+                                .then((_) { _taskTitleControllers[e.eventId]!.clear(); _loadTasks(e.eventId); });
+                              }},
                             ),
-                          ],
                         ],
                       ),
                     ),
