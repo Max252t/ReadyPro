@@ -18,4 +18,7 @@ abstract class EventRepository {
   });
 
   Future<List<Profile>> getEventParticipants(String eventId, {UserRole? role});
+
+  // Метод для загрузки обложки мероприятия
+  Future<String?> uploadEventImage(String eventId, dynamic imageFile);
 }

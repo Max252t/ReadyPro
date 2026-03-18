@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ready_pro/models/event.dart';
 import 'package:ready_pro/models/user_event.dart';
@@ -91,6 +92,32 @@ class SupabaseEventRepository implements EventRepository {
     return Event.fromJson(data);
   }
 
+  Future<String?> uploadEventImage(String eventId, dynamic imageFile) async {
+    try {
+      final fileName = '$eventId/cover.png';
+      
+      if (kIsWeb) {
+        final bytes = await (imageFile as dynamic).readAsBytes();
+        await _client.storage.from('event_images').uploadBinary(
+          fileName,
+          bytes,
+          fileOptions: const FileOptions(upsert: true, contentType: 'image/png'),
+        );
+      } else {
+        await _client.storage.from('event_images').upload(
+          fileName,
+          imageFile,
+          fileOptions: const FileOptions(upsert: true, contentType: 'image/png'),
+        );
+      }
+      
+      return _client.storage.from('event_images').getPublicUrl(fileName);
+    } catch (e) {
+      print('Error uploading event image: $e');
+      return null;
+    }
+  }
+
   @override
   Future<void> createEvent(Event event) async {
     try {
@@ -105,6 +132,7 @@ class SupabaseEventRepository implements EventRepository {
         'location': event.location,
         'status': event.status.name,
         'created_by': user.id,
+        'image_url': event.imageUrl,
       };
 
       await _client.from('events').insert(eventData);
@@ -121,6 +149,7 @@ class SupabaseEventRepository implements EventRepository {
       'start_date': event.startDate?.toIso8601String(),
       'end_date': event.endDate?.toIso8601String(),
       'location': event.location,
+      'image_url': event.imageUrl,
       'status': event.status.name,
     }).eq('id', event.id);
   }

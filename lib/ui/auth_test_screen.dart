@@ -274,6 +274,36 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
     );
   }
 
+  Future<void> _pickAndCreateEvent() async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(source: ImageSource.gallery);
+    
+    setState(() => _isLoading = true);
+    try {
+      String? imageUrl;
+      final tempId = DateTime.now().millisecondsSinceEpoch.toString();
+      
+      if (image != null) {
+        imageUrl = await getIt<EventRepository>().uploadEventImage(tempId, image);
+      }
+
+      final newEvent = Event(
+        id: '', 
+        title: 'Ивент ${DateTime.now().second}', 
+        status: EventStatus.preparation, 
+        createdBy: _currentUser!.id,
+        imageUrl: imageUrl,
+      );
+      
+      await getIt<EventRepository>().createEvent(newEvent);
+      _loadMyEvents();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка создания: $e')));
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -344,13 +374,9 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
           ),
         ),
         ElevatedButton.icon(
-          onPressed: () async {
-            final newEvent = Event(id: '', title: 'Ивент ${DateTime.now().second}', status: EventStatus.preparation, createdBy: _currentUser!.id);
-            await getIt<EventRepository>().createEvent(newEvent);
-            _loadMyEvents();
-          }, 
-          icon: const Icon(Icons.add),
-          label: const Text('Создать мероприятие'),
+          onPressed: _pickAndCreateEvent, 
+          icon: const Icon(Icons.add_a_photo),
+          label: const Text('Создать мероприятие с фото'),
         ),
         const Divider(),
         Expanded(
@@ -366,9 +392,26 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
               _eventSectionNameControllers.putIfAbsent(e.eventId, () => TextEditingController());
               _taskTitleControllers.putIfAbsent(e.eventId, () => TextEditingController());
 
+              // Находим данные ивента (нам нужно поле image_url, которого нет в UserEvent)
+              // В реальном приложении мы бы загружали детали ивента отдельно или расширили UserEvent
+              // Для теста предположим, что мы можем получить image_url (нужно добавить его в UserEvent или грузить Event)
+              
               return Card(
                 margin: const EdgeInsets.symmetric(vertical: 8),
                 child: ExpansionTile(
+                  leading: Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      image: DecorationImage(
+                        image: (e.imageUrl != null && e.imageUrl!.isNotEmpty)
+                            ? NetworkImage(e.imageUrl!) as ImageProvider
+                            : const AssetImage('assets/images/event.png'),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
                   title: Text(e.title, style: const TextStyle(fontWeight: FontWeight.bold)),
                   subtitle: Text('Роль: ${e.role.name.toUpperCase()}'),
                   trailing: e.role == UserRole.organizer 
