@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import 'package:ready_pro/models/user.dart';
@@ -42,41 +43,34 @@ class SupabaseAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<String?> updateAvatar(File imageFile) async {
+  Future<String?> updateAvatar(dynamic imageFile) async {
     try {
       final user = _client.auth.currentUser;
       if (user == null) return null;
 
       final fileName = '${user.id}/avatar_${DateTime.now().millisecondsSinceEpoch}.png';
 
-      // 1. Загружаем новый файл
-      await _client.storage.from('profile').upload(
-            fileName,
-            imageFile,
-            fileOptions: const supabase.FileOptions(upsert: true, contentType: 'image/png'),
-          );
+      if (kIsWeb) {
+        // Логика для Web (XFile или байты)
+        final bytes = await (imageFile as dynamic).readAsBytes();
+        await _client.storage.from('profile').uploadBinary(
+              fileName,
+              bytes,
+              fileOptions: const supabase.FileOptions(upsert: true, contentType: 'image/png'),
+            );
+      } else {
+        // Логика для Mobile (File)
+        await _client.storage.from('profile').upload(
+              fileName,
+              imageFile as File,
+              fileOptions: const supabase.FileOptions(upsert: true, contentType: 'image/png'),
+            );
+      }
 
       final newUrl = _client.storage.from('profile').getPublicUrl(fileName);
 
-      // 2. Получаем старый URL, чтобы найти старый файл
-      final profile = await _getProfile(user.id);
-      final oldUrl = profile?.avatarUrl;
-
-      // 3. Обновляем URL в профиле
+      // Обновляем URL в профиле
       await _client.from('profiles').update({'avatar_url': newUrl}).eq('id', user.id);
-
-      // 4. Удаляем старые файлы из папки пользователя (кроме нового)
-      if (oldUrl != null) {
-        final List<supabase.FileObject> files = await _client.storage.from('profile').list(path: user.id);
-        final List<String> filesToDelete = files
-            .where((file) => !newUrl.contains(file.name))
-            .map((file) => '${user.id}/${file.name}')
-            .toList();
-        
-        if (filesToDelete.isNotEmpty) {
-          await _client.storage.from('profile').remove(filesToDelete);
-        }
-      }
 
       return newUrl;
     } catch (e) {

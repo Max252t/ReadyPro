@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:ready_pro/core/di.dart';
@@ -8,6 +8,7 @@ import 'package:ready_pro/repositories/section_repository.dart';
 import 'package:ready_pro/repositories/talk_repository.dart';
 import 'package:ready_pro/repositories/task_repository.dart';
 import 'package:ready_pro/repositories/feedback_repository.dart';
+import 'package:ready_pro/repositories/schedule_repository.dart';
 import 'package:ready_pro/models/user.dart';
 import 'package:ready_pro/models/user_event.dart';
 import 'package:ready_pro/models/event.dart';
@@ -43,6 +44,7 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
   Map<String, List<Task>> _eventTasks = {};
   Map<String, List<Profile>> _eventParticipants = {};
   Map<String, List<model.Feedback>> _talkFeedbacks = {};
+  Map<String, bool> _isInSchedule = {};
 
   @override
   void initState() {
@@ -101,9 +103,22 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
     try {
       final talks = await getIt<TalkRepository>().getTalksBySection(sectionId);
       if (mounted) setState(() => _sectionTalks[sectionId] = talks);
-      for (var talk in talks) _loadFeedback(talk.id);
+      for (var talk in talks) {
+        _loadFeedback(talk.id);
+        _loadScheduleStatus(talk.id);
+      }
     } catch (e) {
       print('Error: $e');
+    }
+  }
+
+  Future<void> _loadScheduleStatus(String talkId) async {
+    if (_currentUser == null) return;
+    try {
+      final isIn = await getIt<ScheduleRepository>().isInSchedule(_currentUser!.id, talkId);
+      if (mounted) setState(() => _isInSchedule[talkId] = isIn);
+    } catch (e) {
+      print('Error loading schedule: $e');
     }
   }
 
@@ -141,7 +156,7 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
     if (image != null) {
       setState(() => _isLoading = true);
       try {
-        final newUrl = await getIt<AuthRepository>().updateAvatar(File(image.path));
+        final newUrl = await getIt<AuthRepository>().updateAvatar(image);
         if (newUrl != null) {
           await _checkUser();
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Аватар обновлен')));
@@ -187,6 +202,76 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
     }
+  }
+
+  Future<void> _toggleSchedule(Talk talk) async {
+    if (_currentUser == null) return;
+    try {
+      final isIn = _isInSchedule[talk.id] ?? false;
+      if (isIn) {
+        await getIt<ScheduleRepository>().removeFromSchedule(_currentUser!.id, talk.id);
+      } else {
+        await getIt<ScheduleRepository>().addToSchedule(_currentUser!.id, talk.id);
+      }
+      _loadScheduleStatus(talk.id);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка расписания: $e')));
+    }
+  }
+
+  void _showFeedbackDialog(Talk talk) {
+    int rating = 5;
+    final commentController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text('Отзыв: ${talk.title}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (index) => IconButton(
+                  icon: Icon(index < rating ? Icons.star : Icons.star_border, color: Colors.amber),
+                  onPressed: () => setDialogState(() => rating = index + 1),
+                )),
+              ),
+              TextField(
+                controller: commentController,
+                decoration: const InputDecoration(labelText: 'Комментарий'),
+                maxLines: 3,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
+            ElevatedButton(
+              onPressed: () async {
+                try {
+                  await getIt<FeedbackRepository>().submitFeedback(model.Feedback(
+                    id: '',
+                    talkId: talk.id,
+                    userId: _currentUser!.id,
+                    rating: rating,
+                    comment: commentController.text,
+                  ));
+                  if (mounted) {
+                    Navigator.pop(context);
+                    _loadFeedback(talk.id);
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Отзыв отправлен')));
+                  }
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                }
+              },
+              child: const Text('Отправить'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -329,7 +414,27 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
                                       .then((_) { _sectionTalkTitleControllers[s.id]!.clear(); _loadTalks(s.id); _loadSections(e.eventId); });
                                     }, icon: const Icon(Icons.playlist_add)),
                                   ]),
-                                ...talks.map((t) => ListTile(title: Text(t.title), subtitle: Text('Статус: ${t.status.name}'), dense: true)),
+                                ...talks.map((t) {
+                                  final inSchedule = _isInSchedule[t.id] ?? false;
+                                  return ListTile(
+                                    title: Text(t.title), 
+                                    subtitle: Text('Статус: ${t.status.name}'), 
+                                    dense: true,
+                                    trailing: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: Icon(inSchedule ? Icons.calendar_today : Icons.calendar_today_outlined, color: inSchedule ? Colors.blue : null),
+                                          onPressed: () => _toggleSchedule(t),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.star, color: Colors.amber),
+                                          onPressed: () => _showFeedbackDialog(t),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }),
                               ],
                             );
                           }).toList(),

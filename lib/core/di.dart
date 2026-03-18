@@ -12,6 +12,8 @@ import 'package:ready_pro/repositories/task_repository.dart';
 import 'package:ready_pro/repositories/supabase_task_repository.dart';
 import 'package:ready_pro/repositories/feedback_repository.dart';
 import 'package:ready_pro/repositories/supabase_feedback_repository.dart';
+import 'package:ready_pro/repositories/schedule_repository.dart';
+import 'package:ready_pro/repositories/supabase_schedule_repository.dart';
 
 final getIt = GetIt.instance;
 
@@ -40,5 +42,9 @@ void setupDI() {
 
   getIt.registerLazySingleton<FeedbackRepository>(
     () => SupabaseFeedbackRepository(getIt<SupabaseClient>()),
+  );
+
+  getIt.registerLazySingleton<ScheduleRepository>(
+    () => SupabaseScheduleRepository(getIt<SupabaseClient>()),
   );
 }
