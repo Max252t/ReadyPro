@@ -1,7 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter/foundation.dart';
 import 'package:ready_pro/repositories/auth_repository.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
+import 'dart:async';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository _authRepository;
@@ -100,9 +102,23 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthSignOutRequested event,
     Emitter<AuthState> emit,
   ) async {
-    emit(AuthLoading());
-    await _authRepository.signOut();
+    // Для выхода критично не оставлять UI в `AuthLoading` навсегда:
+    // сразу переводим приложение в состояние "не аутентифицирован".
+    // А `supabase.auth.signOut()` пусть выполняется с таймаутом (на UI это не должно влиять).
     emit(AuthUnauthenticated());
+    try {
+      // Иногда `supabase.auth.signOut()` может зависнуть из-за сети.
+      // Добавляем таймаут, чтобы UI не оставался в `AuthLoading` навсегда.
+      await _authRepository
+          .signOut()
+          .timeout(const Duration(seconds: 10));
+    } on TimeoutException catch (e) {
+      // Не блокируемся: принудительно уводим пользователя на экран входа.
+      debugPrint('SignOut timeout: $e');
+    } catch (e) {
+      // На ошибках тоже завершаем попытку выхода.
+      debugPrint('SignOut error: $e');
+    }
   }
 
   Future<void> _onAuthAvatarUpdateRequested(

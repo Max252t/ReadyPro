@@ -28,7 +28,12 @@ class RootShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authState = context.watch<AuthBloc>().state;
-    if (authState is! AuthAuthenticated) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    // Если пользователь уже разлогинен, показывать спиннер бессмысленно:
+    // навигация на `login` должна сработать на уровне `App`.
+    if (authState is AuthUnauthenticated) return const SizedBox.shrink();
+    if (authState is! AuthAuthenticated) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
     
     final user = authState.user;
     final navLinks = _navLinksForRole(role);

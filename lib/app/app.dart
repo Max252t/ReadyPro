@@ -31,6 +31,9 @@ class ReadyProApp extends StatefulWidget {
 
 class _ReadyProAppState extends State<ReadyProApp> {
   late final AppThemeController _themeController;
+  // Навигация через key не зависит от контекста конкретного виджета.
+  // Это убирает ошибку "Navigator operation requested with a context..."
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
   @override
   void initState() {
@@ -90,6 +93,7 @@ class _ReadyProAppState extends State<ReadyProApp> {
         listenable: _themeController,
         builder: (context, _) {
           return MaterialApp(
+            navigatorKey: _navigatorKey,
             title: 'ReadyPro',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.light(),
@@ -99,7 +103,13 @@ class _ReadyProAppState extends State<ReadyProApp> {
               return BlocListener<AuthBloc, AuthState>(
                 listener: (context, state) {
                   if (state is AuthUnauthenticated) {
-                    Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.login, (route) => false);
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      final nav = _navigatorKey.currentState;
+                      nav?.pushNamedAndRemoveUntil(
+                        AppRoutes.login,
+                        (route) => false,
+                      );
+                    });
                   }
                 },
                 child: AppThemeScope(
