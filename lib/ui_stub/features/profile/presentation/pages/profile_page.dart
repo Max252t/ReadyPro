@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../app/routes.dart';
+import '../../../../../app/widgets/theme_toggle_button.dart';
 import '../../../../shared/mock/ui_mock_data.dart';
 import '../../../../shared/mock/ui_models.dart';
 import '../../../../shared/presentation/layout/root_shell.dart';
@@ -27,14 +28,22 @@ class ProfilePage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Ваша информация и активность',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.6),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  'Ваша информация и активность',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.6),
+                      ),
                 ),
+              ),
+              const ThemeToggleButton(),
+            ],
           ),
           const SizedBox(height: 16),
           Card(

@@ -17,5 +17,19 @@ class AppColors {
   // Login gradient (from `LoginPage.tsx`: from-blue-50 to-indigo-100)
   static const loginGradientFrom = Color(0xFFEFF6FF); // blue-50
   static const loginGradientTo = Color(0xFFE0E7FF); // indigo-100
+
+  /// Токены тёмной темы (как `figma-export` `.dark`).
+  static const darkBackground = Color(0xFF0F172A);
+  static const darkForeground = Color(0xFFF1F5F9);
+  static const darkCard = Color(0xFF1E293B);
+  static const darkMuted = Color(0xFF334155);
+  static const darkMutedForeground = Color(0xFF94A3B8);
+  static const darkPrimary = Color(0xFF60A5FA);
+  static const darkPrimaryForeground = Color(0xFF0F172A);
+  static const darkBorder = Color(0xFF334155);
+  static const darkInputBackground = Color(0xFF1E293B);
+
+  static const loginGradientFromDark = Color(0xFF0F172A);
+  static const loginGradientToDark = Color(0xFF1E3A8A);
 }
 

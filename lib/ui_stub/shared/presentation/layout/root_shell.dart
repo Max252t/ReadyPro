@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/routes.dart';
+import '../../../../app/widgets/theme_toggle_button.dart';
 import '../../mock/ui_mock_data.dart';
 import '../../mock/ui_models.dart';
 
@@ -44,6 +45,10 @@ class RootShell extends StatelessWidget {
           ? null
           : AppBar(
               title: const Text('Хакатон 2026'),
+              actions: const [
+                ThemeToggleButton(),
+                SizedBox(width: 4),
+              ],
             ),
       drawer: isDesktop ? null : Drawer(child: nav),
       body: SafeArea(
@@ -213,6 +218,24 @@ class _NavContent extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           child: Column(
             children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+                child: Row(
+                  children: [
+                    Text(
+                      'Тема',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.65),
+                          ),
+                    ),
+                    const Spacer(),
+                    const ThemeToggleButton(),
+                  ],
+                ),
+              ),
               _NavTile(
                 icon: Icons.account_circle_outlined,
                 label: 'Профиль',

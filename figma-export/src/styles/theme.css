@@ -61,6 +61,8 @@
   --destructive-foreground: #ffffff;
   --border: #334155;
   --input: #334155;
+  --input-background: #1e293b;
+  --switch-background: #475569;
   --ring: #3b82f6;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
