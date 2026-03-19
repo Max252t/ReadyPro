@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../app/routes.dart';
+import '../../../../shared/mock/ui_models.dart';
 import '../../../../shared/presentation/widgets/login_card.dart';
 
 class LoginPage extends StatelessWidget {
@@ -54,6 +55,7 @@ class LoginPage extends StatelessWidget {
               onPressed: () => Navigator.pushNamed(
                 context,
                 AppRoutes.organizerDashboard,
+                arguments: const {'role': UiRole.organizer},
               ),
               child: const Text('Войти (заглушка)'),
             ),
@@ -74,23 +76,35 @@ class LoginPage extends StatelessWidget {
               alignment: WrapAlignment.center,
               children: [
                 OutlinedButton(
-                  onPressed: () =>
-                      Navigator.pushNamed(context, AppRoutes.organizerDashboard),
+                  onPressed: () => Navigator.pushNamed(
+                    context,
+                    AppRoutes.organizerDashboard,
+                    arguments: const {'role': UiRole.organizer},
+                  ),
                   child: const Text('Организатор'),
                 ),
                 OutlinedButton(
-                  onPressed: () =>
-                      Navigator.pushNamed(context, AppRoutes.curatorDashboard),
+                  onPressed: () => Navigator.pushNamed(
+                    context,
+                    AppRoutes.curatorDashboard,
+                    arguments: const {'role': UiRole.curator},
+                  ),
                   child: const Text('Куратор'),
                 ),
                 OutlinedButton(
-                  onPressed: () =>
-                      Navigator.pushNamed(context, AppRoutes.speakerTalks),
+                  onPressed: () => Navigator.pushNamed(
+                    context,
+                    AppRoutes.speakerTalks,
+                    arguments: const {'role': UiRole.speaker},
+                  ),
                   child: const Text('Спикер'),
                 ),
                 OutlinedButton(
-                  onPressed: () =>
-                      Navigator.pushNamed(context, AppRoutes.participantProgram),
+                  onPressed: () => Navigator.pushNamed(
+                    context,
+                    AppRoutes.participantProgram,
+                    arguments: const {'role': UiRole.participant},
+                  ),
                   child: const Text('Участник'),
                 ),
               ],

@@ -12,6 +12,8 @@ import '../ui_stub/features/participant/presentation/pages/program_page.dart';
 import '../ui_stub/features/participant/presentation/pages/my_schedule_page.dart';
 import '../ui_stub/features/speaker/presentation/pages/speaker_talks_page.dart';
 import '../ui_stub/features/talk/presentation/pages/talk_details_page.dart';
+import '../ui_stub/shared/mock/ui_models.dart';
+import '../ui_stub/shared/route_args.dart';
 
 class AppRoutes {
   static const login = '/login';
@@ -34,17 +36,31 @@ class AppRoutes {
 
   static Map<String, WidgetBuilder> get map => {
         login: (_) => const LoginPage(),
-        profile: (_) => const ProfilePage(),
+        profile: (context) => ProfilePage(
+              role: uiRoleFromArgs(ModalRoute.of(context)?.settings.arguments),
+            ),
         curatorDashboard: (_) => const CuratorDashboardPage(),
         curatorReports: (_) => const CuratorReportsPage(),
         organizerDashboard: (_) => const OrganizerDashboardPage(),
         organizerSchedule: (_) => const SchedulePage(),
         organizerSections: (_) => const SectionsPage(),
         organizerTasks: (_) => const TasksPage(),
-        participantProgram: (_) => const ProgramPage(),
-        participantMySchedule: (_) => const MySchedulePage(),
-        speakerTalks: (_) => const SpeakerTalksPage(),
-        talkDetails: (_) => const TalkDetailsPage(),
+        participantProgram: (context) => ProgramPage(
+              role: uiRoleFromArgs(ModalRoute.of(context)?.settings.arguments),
+            ),
+        participantMySchedule: (context) => MySchedulePage(
+              role: uiRoleFromArgs(ModalRoute.of(context)?.settings.arguments),
+            ),
+        speakerTalks: (context) => SpeakerTalksPage(
+              role: uiRoleFromArgs(
+                ModalRoute.of(context)?.settings.arguments,
+                fallback: UiRole.speaker,
+              ),
+            ),
+        talkDetails: (context) => TalkDetailsPage(
+              role: uiRoleFromArgs(ModalRoute.of(context)?.settings.arguments),
+              talkId: talkIdFromArgs(ModalRoute.of(context)?.settings.arguments),
+            ),
       };
 }
 

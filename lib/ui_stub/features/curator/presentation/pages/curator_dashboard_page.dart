@@ -298,7 +298,10 @@ class CuratorDashboardPage extends StatelessWidget {
             onPressed: () => Navigator.pushNamed(
               context,
               AppRoutes.talkDetails,
-              arguments: const {'talkId': 'talk1'},
+              arguments: const {
+                'role': UiRole.curator,
+                'talkId': 'talk1',
+              },
             ),
             icon: const Icon(Icons.open_in_new),
             label: const Text('Открыть доклад (пример)'),
