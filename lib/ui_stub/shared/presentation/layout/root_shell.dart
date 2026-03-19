@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:ready_pro/app/layout/app_breakpoints.dart';
 import 'package:ready_pro/blocs/auth/auth_bloc.dart';
 import 'package:ready_pro/blocs/auth/auth_event.dart';
 import 'package:ready_pro/blocs/auth/auth_state.dart';
@@ -33,7 +34,7 @@ class RootShell extends StatelessWidget {
     final user = authState.user;
     final navLinks = _navLinksForRole(role);
     final routeName = ModalRoute.of(context)?.settings.name ?? '';
-    final isDesktop = MediaQuery.sizeOf(context).width >= 900;
+    final isDesktop = AppBreakpoints.isExpanded(context);
 
     // Сохраняем eventId при навигации
     final currentArgs = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
@@ -139,7 +140,23 @@ class _PageFrame extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 20),
-        Expanded(child: child),
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final w = constraints.maxWidth < AppBreakpoints.contentMaxWidth
+                  ? constraints.maxWidth
+                  : AppBreakpoints.contentMaxWidth;
+              return Align(
+                alignment: Alignment.topCenter,
+                child: SizedBox(
+                  width: w,
+                  height: constraints.maxHeight,
+                  child: child,
+                ),
+              );
+            },
+          ),
+        ),
       ],
     );
   }

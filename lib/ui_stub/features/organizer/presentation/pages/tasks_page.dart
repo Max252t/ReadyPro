@@ -10,7 +10,7 @@ import 'package:ready_pro/blocs/event/event_event.dart';
 import 'package:ready_pro/blocs/event/event_state.dart';
 import 'package:ready_pro/models/task.dart';
 import 'package:ready_pro/models/user.dart';
-import 'package:ready_pro/core/enums.dart';
+import 'package:ready_pro/app/layout/app_breakpoints.dart';
 
 import '../../../../shared/presentation/layout/root_shell.dart';
 import '../../../../shared/mock/ui_models.dart';
@@ -203,9 +203,9 @@ class _TasksPageState extends State<TasksPage> {
                   const SizedBox(height: 16),
                   LayoutBuilder(
                     builder: (context, c) {
-                      final two = c.maxWidth >= 900;
                       return GridView.count(
-                        crossAxisCount: two ? 2 : 1,
+                        crossAxisCount:
+                            AppBreakpoints.taskBoardColumns(c.maxWidth),
                         crossAxisSpacing: 16,
                         mainAxisSpacing: 16,
                         shrinkWrap: true,

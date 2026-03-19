@@ -11,6 +11,7 @@ import 'package:ready_pro/blocs/organizer/organizer_state.dart';
 import 'package:ready_pro/blocs/event/event_bloc.dart';
 import 'package:ready_pro/blocs/event/event_event.dart';
 import 'package:ready_pro/blocs/event/event_state.dart';
+import 'package:ready_pro/app/layout/app_breakpoints.dart';
 import 'package:ready_pro/core/enums.dart';
 import 'package:ready_pro/models/user.dart';
 
@@ -96,7 +97,8 @@ class _CuratorDashboardPageState extends State<CuratorDashboardPage> {
                     children: [
                       LayoutBuilder(
                         builder: (context, c) {
-                          final columns = c.maxWidth >= 900 ? 3 : 1;
+                          final columns =
+                              AppBreakpoints.curatorStatColumns(c.maxWidth);
                           return GridView.count(
                             crossAxisCount: columns,
                             crossAxisSpacing: 16,
@@ -129,9 +131,9 @@ class _CuratorDashboardPageState extends State<CuratorDashboardPage> {
                       const SizedBox(height: 16),
                       LayoutBuilder(
                         builder: (context, c) {
-                          final twoCols = c.maxWidth >= 900;
                           return GridView.count(
-                            crossAxisCount: twoCols ? 2 : 1,
+                            crossAxisCount:
+                                AppBreakpoints.twoColumnCards(c.maxWidth),
                             crossAxisSpacing: 16,
                             mainAxisSpacing: 16,
                             shrinkWrap: true,

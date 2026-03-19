@@ -8,7 +8,7 @@ import 'package:ready_pro/blocs/event/event_event.dart';
 import 'package:ready_pro/blocs/event/event_state.dart';
 import 'package:ready_pro/models/section.dart';
 import 'package:ready_pro/models/user.dart';
-import 'package:ready_pro/core/enums.dart';
+import 'package:ready_pro/app/layout/app_breakpoints.dart';
 
 import '../../../../shared/presentation/layout/root_shell.dart';
 import '../../../../shared/presentation/widgets/ui_badge.dart';
@@ -108,7 +108,8 @@ class _SectionsPageState extends State<SectionsPage> {
                   const SizedBox(height: 16),
                   LayoutBuilder(
                     builder: (context, c) {
-                      final cols = c.maxWidth >= 1100 ? 3 : (c.maxWidth >= 750 ? 2 : 1);
+                      final cols =
+                          AppBreakpoints.sectionCardColumns(c.maxWidth);
                       return GridView.count(
                         crossAxisCount: cols,
                         crossAxisSpacing: 16,

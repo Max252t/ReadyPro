@@ -5,6 +5,7 @@ import 'package:ready_pro/blocs/event/event_event.dart';
 import 'package:ready_pro/blocs/organizer/organizer_bloc.dart';
 import 'package:ready_pro/blocs/organizer/organizer_event.dart';
 import 'package:ready_pro/blocs/organizer/organizer_state.dart';
+import 'package:ready_pro/app/layout/app_breakpoints.dart';
 import 'package:ready_pro/core/enums.dart';
 
 import '../../../../../app/routes.dart';
@@ -101,10 +102,7 @@ class _OrganizerDashboardPageState extends State<OrganizerDashboardPage> {
                   const SizedBox(height: 18),
                   LayoutBuilder(
                     builder: (context, c) {
-                      final isWide = c.maxWidth >= 1100;
-                      final isMid = c.maxWidth >= 700;
-                      final columns = isWide ? 4 : (isMid ? 2 : 1);
-            
+                      final columns = AppBreakpoints.organizerStatColumns(c.maxWidth);
                       return GridView.count(
                         crossAxisCount: columns,
                         crossAxisSpacing: 16,
@@ -162,9 +160,9 @@ class _OrganizerDashboardPageState extends State<OrganizerDashboardPage> {
                   const SizedBox(height: 16),
                   LayoutBuilder(
                     builder: (context, c) {
-                      final twoCols = c.maxWidth >= 900;
+                      final pairCols = AppBreakpoints.twoColumnCards(c.maxWidth);
                       return GridView.count(
-                        crossAxisCount: twoCols ? 2 : 1,
+                        crossAxisCount: pairCols,
                         crossAxisSpacing: 16,
                         mainAxisSpacing: 16,
                         shrinkWrap: true,

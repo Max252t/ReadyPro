@@ -8,6 +8,7 @@ import 'package:ready_pro/blocs/program/program_state.dart';
 import 'package:ready_pro/blocs/organizer/organizer_bloc.dart';
 import 'package:ready_pro/blocs/organizer/organizer_event.dart';
 import 'package:ready_pro/blocs/organizer/organizer_state.dart';
+import 'package:ready_pro/app/layout/app_breakpoints.dart';
 import 'package:ready_pro/core/enums.dart';
 import 'package:ready_pro/models/talk.dart';
 import 'package:ready_pro/models/task.dart';
@@ -291,7 +292,8 @@ class _SpeakerTalksPageState extends State<SpeakerTalksPage> {
                   else
                     LayoutBuilder(
                       builder: (context, c) {
-                        final cols = c.maxWidth >= 900 ? 2 : 1;
+                        final cols =
+                            AppBreakpoints.speakerTalkColumns(c.maxWidth);
                         return GridView.count(
                           crossAxisCount: cols,
                           crossAxisSpacing: 16,
