@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:ready_pro/core/di.dart';
@@ -295,7 +294,12 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
         imageUrl: imageUrl,
       );
       
-      await getIt<EventRepository>().createEvent(newEvent);
+      final createdEventId = await getIt<EventRepository>().createEvent(newEvent);
+      await getIt<EventRepository>().joinEvent(
+        eventId: createdEventId,
+        userId: _currentUser!.id,
+        role: UserRole.organizer,
+      );
       _loadMyEvents();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка создания: $e')));
@@ -399,17 +403,32 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
               return Card(
                 margin: const EdgeInsets.symmetric(vertical: 8),
                 child: ExpansionTile(
-                  leading: Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      image: DecorationImage(
-                        image: (e.imageUrl != null && e.imageUrl!.isNotEmpty)
-                            ? NetworkImage(e.imageUrl!) as ImageProvider
-                            : const AssetImage('assets/images/event.png'),
-                        fit: BoxFit.cover,
-                      ),
+                  leading: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: SizedBox(
+                      width: 50,
+                      height: 50,
+                      child: (e.imageUrl != null && e.imageUrl!.isNotEmpty)
+                          ? Image.network(
+                              e.imageUrl!,
+                              width: 50,
+                              height: 50,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) {
+                                return Image.asset(
+                                  'assets/images/event.png',
+                                  width: 50,
+                                  height: 50,
+                                  fit: BoxFit.cover,
+                                );
+                              },
+                            )
+                          : Image.asset(
+                              'assets/images/event.png',
+                              width: 50,
+                              height: 50,
+                              fit: BoxFit.cover,
+                            ),
                     ),
                   ),
                   title: Text(e.title, style: const TextStyle(fontWeight: FontWeight.bold)),

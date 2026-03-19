@@ -11,6 +11,61 @@ class SupabaseEventRepository implements EventRepository {
 
   SupabaseEventRepository(this._client);
 
+  static const int _signedUrlTtlSeconds = 60 * 60; // 1 hour
+
+  /// Extracts an object path inside a Supabase storage bucket from either:
+  /// - public URLs:  /storage/v1/object/public/{bucket}/{path}
+  /// - signed URLs:  /storage/v1/object/sign/{bucket}/{path}
+  /// - relative paths stored as-is (e.g. "events/{id}/cover.png")
+  String? _extractObjectPathFromStorageUrl({
+    required String url,
+    required String bucket,
+  }) {
+    // Ignore query params (signature, etc.).
+    final cleanUrl = url.split('?').first;
+
+    final publicMarker = '/storage/v1/object/public/$bucket/';
+    final signMarker = '/storage/v1/object/sign/$bucket/';
+
+    final publicIdx = cleanUrl.indexOf(publicMarker);
+    if (publicIdx != -1) {
+      return cleanUrl.substring(publicIdx + publicMarker.length);
+    }
+
+    final signIdx = cleanUrl.indexOf(signMarker);
+    if (signIdx != -1) {
+      return cleanUrl.substring(signIdx + signMarker.length);
+    }
+
+    // If it looks like a relative path (not a full http(s) URL), treat it as object path.
+    final looksLikeFullUrl = cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://');
+    if (!looksLikeFullUrl) {
+      return cleanUrl.startsWith('/') ? cleanUrl.substring(1) : cleanUrl;
+    }
+
+    return null;
+  }
+
+  Future<String?> _maybeCreateSignedImageUrl({
+    required String? imageUrl,
+    required String bucket,
+  }) async {
+    if (imageUrl == null || imageUrl.isEmpty) return null;
+
+    final path = _extractObjectPathFromStorageUrl(url: imageUrl, bucket: bucket);
+    if (path == null || path.isEmpty) return imageUrl;
+
+    try {
+      return await _client.storage.from(bucket).createSignedUrl(
+            path,
+            _signedUrlTtlSeconds,
+          );
+    } catch (e) {
+      print('CreateSignedUrl (storage=$bucket) failed: $e');
+      return imageUrl;
+    }
+  }
+
   @override
   Future<List<Event>> getEvents() async {
     try {
@@ -18,8 +73,19 @@ class SupabaseEventRepository implements EventRepository {
           .from('events')
           .select()
           .order('start_date', ascending: true);
-      
-      return response.map((json) => Event.fromJson(json)).toList();
+
+      final events = response.map((json) => Event.fromJson(json)).toList();
+      final signedEvents = await Future.wait(events.map((event) async {
+        if (event.imageUrl == null || event.imageUrl!.isEmpty) return event;
+        final signedUrl = await _maybeCreateSignedImageUrl(
+          imageUrl: event.imageUrl,
+          bucket: 'event_images',
+        );
+        if (signedUrl == null || signedUrl.isEmpty) return event;
+        return event.copyWith(imageUrl: signedUrl);
+      }));
+
+      return signedEvents;
     } catch (e) {
       rethrow;
     }
@@ -34,7 +100,67 @@ class SupabaseEventRepository implements EventRepository {
       );
       
       final List<dynamic> data = response as List<dynamic>;
-      return data.map((json) => UserEvent.fromJson(json)).toList();
+
+      final userEvents = data.map((json) => UserEvent.fromJson(json)).toList();
+
+      // Some RPC implementations may omit or return null/empty `image_url`.
+      // Since the UI expects `imageUrl` to be usable, patch missing values from `events` table.
+      final missingImageEventIds = userEvents
+          .where((ue) => ue.imageUrl == null || ue.imageUrl!.isEmpty)
+          .map((ue) => ue.eventId)
+          .toSet()
+          .toList();
+
+      Map<String, String?> imageUrlByEventId = {};
+      if (missingImageEventIds.isNotEmpty) {
+        // Supabase Dart query builder in this repo doesn't expose `in(...)`/`in_(...)`,
+        // so we load missing image_url values one-by-one.
+        for (final evId in missingImageEventIds) {
+          final row = await _client
+              .from('events')
+              .select('image_url')
+              .eq('id', evId)
+              .maybeSingle();
+          if (row is Map<String, dynamic>) {
+            imageUrlByEventId[evId] = row['image_url'] as String?;
+          }
+        }
+      }
+
+      final patchedUserEvents = userEvents.map((ue) {
+        final patchedImageUrl = (ue.imageUrl == null || ue.imageUrl!.isEmpty)
+            ? (imageUrlByEventId[ue.eventId] ?? ue.imageUrl)
+            : ue.imageUrl;
+
+        return UserEvent(
+          eventId: ue.eventId,
+          title: ue.title,
+          imageUrl: patchedImageUrl,
+          status: ue.status,
+          role: ue.role,
+          joinedAt: ue.joinedAt,
+        );
+      }).toList();
+
+      final signedUserEvents = await Future.wait(patchedUserEvents.map((ue) async {
+        final signedUrl = await _maybeCreateSignedImageUrl(
+          imageUrl: ue.imageUrl,
+          bucket: 'event_images',
+        );
+
+        if (signedUrl == null || signedUrl.isEmpty) return ue;
+
+        return UserEvent(
+          eventId: ue.eventId,
+          title: ue.title,
+          imageUrl: signedUrl,
+          status: ue.status,
+          role: ue.role,
+          joinedAt: ue.joinedAt,
+        );
+      }));
+
+      return signedUserEvents;
     } catch (e) {
       rethrow;
     }
@@ -70,6 +196,24 @@ class SupabaseEventRepository implements EventRepository {
   }
 
   @override
+  Future<void> joinEvent({
+    required String eventId,
+    required String userId,
+    required UserRole role,
+  }) async {
+    try {
+      await _client.from('event_participants').upsert({
+        'event_id': eventId,
+        'user_id': userId,
+        'role': role.name,
+        'joined_at': DateTime.now().toIso8601String(),
+      });
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  @override
   Future<List<Profile>> getEventParticipants(String eventId, {UserRole? role}) async {
     var query = _client.from('event_participants').select('profiles(*)').eq('event_id', eventId);
     
@@ -89,12 +233,19 @@ class SupabaseEventRepository implements EventRepository {
         .select()
         .eq('id', id)
         .single();
-    return Event.fromJson(data);
+    final event = Event.fromJson(data);
+    final signedUrl = await _maybeCreateSignedImageUrl(
+      imageUrl: event.imageUrl,
+      bucket: 'event_images',
+    );
+    if (signedUrl == null || signedUrl.isEmpty) return event;
+    return event.copyWith(imageUrl: signedUrl);
   }
 
+  @override
   Future<String?> uploadEventImage(String eventId, dynamic imageFile) async {
     try {
-      final fileName = '$eventId/cover.png';
+      final fileName = 'events/$eventId/cover_${DateTime.now().millisecondsSinceEpoch}.png';
       
       if (kIsWeb) {
         final bytes = await (imageFile as dynamic).readAsBytes();
@@ -119,7 +270,7 @@ class SupabaseEventRepository implements EventRepository {
   }
 
   @override
-  Future<void> createEvent(Event event) async {
+  Future<String> createEvent(Event event) async {
     try {
       final user = _client.auth.currentUser;
       if (user == null) throw Exception('Пользователь не авторизован');
@@ -135,7 +286,15 @@ class SupabaseEventRepository implements EventRepository {
         'image_url': event.imageUrl,
       };
 
-      await _client.from('events').insert(eventData);
+      final inserted = await _client
+          .from('events')
+          .insert(eventData)
+          .select('id')
+          .single();
+
+      final id = inserted['id'];
+      if (id is String) return id;
+      return id.toString();
     } catch (e) {
       rethrow;
     }

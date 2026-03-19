@@ -7,13 +7,19 @@ abstract class EventRepository {
   Future<List<Event>> getEvents();
   Future<List<UserEvent>> getUserEvents(String userId);
   Future<Event> getEventById(String id);
-  Future<void> createEvent(Event event);
+  Future<String> createEvent(Event event);
   Future<void> updateEvent(Event event);
   Future<void> deleteEvent(String id);
   
   Future<void> assignRole({
     required String eventId,
     required String email,
+    required UserRole role,
+  });
+
+  Future<void> joinEvent({
+    required String eventId,
+    required String userId,
     required UserRole role,
   });
 

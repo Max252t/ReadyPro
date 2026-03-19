@@ -7,9 +7,16 @@ UiRole uiRoleFromArgs(Object? args, {UiRole fallback = UiRole.participant}) {
   return fallback;
 }
 
-String talkIdFromArgs(Object? args, {String fallback = 'talk1'}) {
-  if (args is! Map) return fallback;
+String? talkIdFromArgs(Object? args) {
+  if (args is! Map) return null;
   final id = args['talkId'];
   if (id is String && id.isNotEmpty) return id;
-  return fallback;
+  return null;
+}
+
+String? eventIdFromArgs(Object? args) {
+  if (args is! Map) return null;
+  final id = args['eventId'];
+  if (id is String && id.isNotEmpty) return id;
+  return null;
 }

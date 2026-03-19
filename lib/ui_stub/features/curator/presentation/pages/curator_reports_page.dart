@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ready_pro/app/layout/app_breakpoints.dart';
 
 import '../../../../shared/mock/ui_mock_data.dart';
 import '../../../../shared/mock/ui_models.dart';
@@ -100,9 +101,9 @@ class _SectionReportCard extends StatelessWidget {
             const SizedBox(height: 14),
             LayoutBuilder(
               builder: (context, c) {
-                final two = c.maxWidth >= 520;
                 return GridView.count(
-                  crossAxisCount: two ? 2 : 1,
+                  crossAxisCount:
+                      AppBreakpoints.miniStatColumns(c.maxWidth),
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 12,
                   shrinkWrap: true,
