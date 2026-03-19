@@ -217,8 +217,19 @@ class _ProfilePageState extends State<ProfilePage> {
                                     children: [
                                       CircleAvatar(
                                         radius: 40,
-                                        backgroundImage: profile.avatarUrl != null ? NetworkImage(profile.avatarUrl!) : null,
-                                        child: profile.avatarUrl == null ? const Icon(Icons.person, size: 40) : null,
+                                        child: profile.avatarUrl != null
+                                            ? ClipOval(
+                                                child: Image.network(
+                                                  profile.avatarUrl!,
+                                                  width: 80,
+                                                  height: 80,
+                                                  fit: BoxFit.cover,
+                                                  errorBuilder: (_, __, ___) {
+                                                    return const Icon(Icons.person, size: 40);
+                                                  },
+                                                ),
+                                              )
+                                            : const Icon(Icons.person, size: 40),
                                       ),
                                       Positioned(
                                         right: 0,
@@ -283,8 +294,26 @@ class _ProfilePageState extends State<ProfilePage> {
                               leading: ClipRRect(
                                 borderRadius: BorderRadius.circular(8),
                                 child: e.imageUrl != null 
-                                  ? Image.network(e.imageUrl!, width: 40, height: 40, fit: BoxFit.cover)
-                                  : Image.asset('assets/images/event.png', width: 40, height: 40, fit: BoxFit.cover),
+                                  ? Image.network(
+                                      e.imageUrl!,
+                                      width: 40,
+                                      height: 40,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) {
+                                        return Image.asset(
+                                          'assets/images/event.png',
+                                          width: 40,
+                                          height: 40,
+                                          fit: BoxFit.cover,
+                                        );
+                                      },
+                                    )
+                                  : Image.asset(
+                                      'assets/images/event.png',
+                                      width: 40,
+                                      height: 40,
+                                      fit: BoxFit.cover,
+                                    ),
                               ),
                               title: Text(e.title, overflow: TextOverflow.ellipsis),
                               subtitle: Text(_userRoleLabelRu(e.role)),

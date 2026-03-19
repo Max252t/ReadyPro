@@ -10,13 +10,10 @@ import 'package:ready_pro/blocs/event/event_event.dart';
 import 'package:ready_pro/blocs/event/event_state.dart';
 import 'package:ready_pro/models/talk.dart';
 import 'package:ready_pro/models/section.dart';
-import 'package:ready_pro/models/event.dart';
-import 'package:ready_pro/core/enums.dart';
 
 import '../../../../../app/routes.dart';
 import '../../../../shared/mock/ui_models.dart';
 import '../../../../shared/presentation/layout/root_shell.dart';
-import '../../../../shared/presentation/widgets/ui_badge.dart';
 import '../../../../shared/route_args.dart';
 
 class ProgramPage extends StatefulWidget {
@@ -169,17 +166,32 @@ class _ProgramPageState extends State<ProgramPage> with SingleTickerProviderStat
                   arguments: {'eventId': event.id, 'role': widget.role},
                 );
               },
-              leading: Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  image: DecorationImage(
-                    image: event.imageUrl != null 
-                      ? NetworkImage(event.imageUrl!) 
-                      : const AssetImage('assets/images/event.png') as ImageProvider,
-                    fit: BoxFit.cover,
-                  ),
+              leading: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: SizedBox(
+                  width: 50,
+                  height: 50,
+                  child: event.imageUrl != null
+                      ? Image.network(
+                          event.imageUrl!,
+                          width: 50,
+                          height: 50,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) {
+                            return Image.asset(
+                              'assets/images/event.png',
+                              width: 50,
+                              height: 50,
+                              fit: BoxFit.cover,
+                            );
+                          },
+                        )
+                      : Image.asset(
+                          'assets/images/event.png',
+                          width: 50,
+                          height: 50,
+                          fit: BoxFit.cover,
+                        ),
                 ),
               ),
               title: Text(event.title),

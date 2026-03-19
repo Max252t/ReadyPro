@@ -11,6 +11,46 @@ class SupabaseEventRepository implements EventRepository {
 
   SupabaseEventRepository(this._client);
 
+  static const int _signedUrlTtlSeconds = 60 * 60; // 1 hour
+
+  String? _extractPublicStoragePath({
+    required String publicUrl,
+    required String bucket,
+  }) {
+    // Example:
+    // https://<project>.supabase.co/storage/v1/object/public/<bucket>/<path>
+    final marker = '/storage/v1/object/public/$bucket/';
+    final idx = publicUrl.indexOf(marker);
+    if (idx == -1) return null;
+    return publicUrl.substring(idx + marker.length);
+  }
+
+  Future<String?> _maybeCreateSignedImageUrl({
+    required String? imageUrl,
+    required String bucket,
+  }) async {
+    if (imageUrl == null || imageUrl.isEmpty) return null;
+
+    // If it's already not a public storage URL, keep it as-is.
+    if (!imageUrl.contains('/storage/v1/object/public/$bucket/')) return imageUrl;
+
+    final path = _extractPublicStoragePath(
+      publicUrl: imageUrl,
+      bucket: bucket,
+    );
+    if (path == null || path.isEmpty) return imageUrl;
+
+    try {
+      return await _client.storage.from(bucket).createSignedUrl(
+            path,
+            _signedUrlTtlSeconds,
+          );
+    } catch (e) {
+      print('CreateSignedUrl (storage=$bucket) failed: $e');
+      return imageUrl;
+    }
+  }
+
   @override
   Future<List<Event>> getEvents() async {
     try {
@@ -18,8 +58,19 @@ class SupabaseEventRepository implements EventRepository {
           .from('events')
           .select()
           .order('start_date', ascending: true);
-      
-      return response.map((json) => Event.fromJson(json)).toList();
+
+      final events = response.map((json) => Event.fromJson(json)).toList();
+      final signedEvents = await Future.wait(events.map((event) async {
+        if (event.imageUrl == null || event.imageUrl!.isEmpty) return event;
+        final signedUrl = await _maybeCreateSignedImageUrl(
+          imageUrl: event.imageUrl,
+          bucket: 'event_images',
+        );
+        if (signedUrl == null || signedUrl.isEmpty) return event;
+        return event.copyWith(imageUrl: signedUrl);
+      }));
+
+      return signedEvents;
     } catch (e) {
       rethrow;
     }
@@ -34,7 +85,26 @@ class SupabaseEventRepository implements EventRepository {
       );
       
       final List<dynamic> data = response as List<dynamic>;
-      return data.map((json) => UserEvent.fromJson(json)).toList();
+      final userEvents = data.map((json) => UserEvent.fromJson(json)).toList();
+
+      final signedUserEvents = await Future.wait(userEvents.map((ue) async {
+        final signedUrl = await _maybeCreateSignedImageUrl(
+          imageUrl: ue.imageUrl,
+          bucket: 'event_images',
+        );
+        if (signedUrl == null || signedUrl.isEmpty) return ue;
+
+        return UserEvent(
+          eventId: ue.eventId,
+          title: ue.title,
+          imageUrl: signedUrl,
+          status: ue.status,
+          role: ue.role,
+          joinedAt: ue.joinedAt,
+        );
+      }));
+
+      return signedUserEvents;
     } catch (e) {
       rethrow;
     }
@@ -107,7 +177,13 @@ class SupabaseEventRepository implements EventRepository {
         .select()
         .eq('id', id)
         .single();
-    return Event.fromJson(data);
+    final event = Event.fromJson(data);
+    final signedUrl = await _maybeCreateSignedImageUrl(
+      imageUrl: event.imageUrl,
+      bucket: 'event_images',
+    );
+    if (signedUrl == null || signedUrl.isEmpty) return event;
+    return event.copyWith(imageUrl: signedUrl);
   }
 
   @override

@@ -17,6 +17,43 @@ class SupabaseAuthRepository implements AuthRepository {
 
   SupabaseAuthRepository(this._client);
 
+  static const int _signedUrlTtlSeconds = 60 * 60; // 1 hour
+
+  String? _extractPublicStoragePath({
+    required String publicUrl,
+    required String bucket,
+  }) {
+    // Example:
+    // https://<project>.supabase.co/storage/v1/object/public/<bucket>/<path>
+    final marker = '/storage/v1/object/public/$bucket/';
+    final idx = publicUrl.indexOf(marker);
+    if (idx == -1) return null;
+    return publicUrl.substring(idx + marker.length);
+  }
+
+  Future<String?> _maybeCreateSignedAvatarUrl(String? avatarUrl) async {
+    if (avatarUrl == null || avatarUrl.isEmpty) return null;
+    // If it's already a signed URL (or not a public storage URL), don't touch it.
+    if (!avatarUrl.contains('/storage/v1/object/public/profile/')) return avatarUrl;
+
+    final path = _extractPublicStoragePath(
+      publicUrl: avatarUrl,
+      bucket: 'profile',
+    );
+    if (path == null || path.isEmpty) return avatarUrl;
+
+    try {
+      return await _client.storage.from('profile').createSignedUrl(
+            path,
+            _signedUrlTtlSeconds,
+          );
+    } catch (e) {
+      // Keep the original URL so the UI can still decide what to do.
+      print('CreateSignedUrl (profile) failed: $e');
+      return avatarUrl;
+    }
+  }
+
   void _validatePassword(String password) {
     if (password.length < 6) {
       throw AuthException('Пароль должен содержать не менее 6 символов');
@@ -131,13 +168,14 @@ class SupabaseAuthRepository implements AuthRepository {
       if (response.user != null) {
         final userId = response.user!.id;
         final avatarUrl = await _uploadDefaultAvatar(userId);
+        final signedAvatarUrl = await _maybeCreateSignedAvatarUrl(avatarUrl);
         final now = DateTime.now().toIso8601String();
         
         final profileData = {
           'id': userId,
           'full_name': fullName,
           'email': email,
-          'avatar_url': avatarUrl,
+          'avatar_url': signedAvatarUrl ?? avatarUrl,
           'company': 'Company Name',
           'created_at': now,
           'updated_at': now,
@@ -190,6 +228,25 @@ class SupabaseAuthRepository implements AuthRepository {
         .select()
         .eq('id', id)
         .single();
-    return Profile.fromJson(data);
+
+    final profile = Profile.fromJson(data);
+    final signedAvatarUrl = await _maybeCreateSignedAvatarUrl(profile.avatarUrl);
+    if (signedAvatarUrl == null || signedAvatarUrl.isEmpty) {
+      return profile;
+    }
+
+    // Always replace with signed URL when possible.
+    if (signedAvatarUrl != profile.avatarUrl) {
+      return Profile(
+        id: profile.id,
+        fullName: profile.fullName,
+        email: profile.email,
+        company: profile.company,
+        avatarUrl: signedAvatarUrl,
+        createdAt: profile.createdAt,
+        updatedAt: profile.updatedAt,
+      );
+    }
+    return profile;
   }
 }

@@ -243,10 +243,19 @@ class _NavContent extends StatelessWidget {
                         Theme.of(context).colorScheme.primary.withValues(
                               alpha: 0.12,
                             ),
-                    backgroundImage: (user.avatarUrl != null && user.avatarUrl!.isNotEmpty) 
-                      ? NetworkImage(user.avatarUrl!) 
-                      : null,
-                    child: (user.avatarUrl == null || user.avatarUrl!.isEmpty) ? const Icon(Icons.person, size: 18) : null,
+                    child: (user.avatarUrl != null && user.avatarUrl!.isNotEmpty)
+                        ? ClipOval(
+                            child: Image.network(
+                              user.avatarUrl!,
+                              width: 36,
+                              height: 36,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) {
+                                return const Icon(Icons.person, size: 18);
+                              },
+                            ),
+                          )
+                        : const Icon(Icons.person, size: 18),
                   ),
                   const SizedBox(width: 10),
                   Expanded(

@@ -100,14 +100,27 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
             Container(
               width: double.infinity,
               height: 200,
-              decoration: BoxDecoration(
-                image: DecorationImage(
-                  image: _event!.imageUrl != null
-                      ? NetworkImage(_event!.imageUrl!)
-                      : const AssetImage('assets/images/event.png') as ImageProvider,
-                  fit: BoxFit.cover,
-                ),
-              ),
+              child: _event!.imageUrl != null
+                  ? Image.network(
+                      _event!.imageUrl!,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: 200,
+                      errorBuilder: (_, __, ___) {
+                        return Image.asset(
+                          'assets/images/event.png',
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: 200,
+                        );
+                      },
+                    )
+                  : Image.asset(
+                      'assets/images/event.png',
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: 200,
+                    ),
             ),
             Padding(
               padding: const EdgeInsets.all(16.0),
