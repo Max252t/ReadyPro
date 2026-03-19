@@ -272,33 +272,24 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isNarrow = constraints.maxWidth < 220;
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          child: const Text(
-                            'Мои мероприятия',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                          ),
-                        ),
-                        isNarrow
-                            ? IconButton(
-                                onPressed: _showCreateEventDialog,
-                                icon: const Icon(Icons.add),
-                              )
-                            : TextButton.icon(
-                                onPressed: _showCreateEventDialog,
-                                icon: const Icon(Icons.add),
-                                label: const Text('Создать'),
-                              ),
-                      ],
-                    );
-                  },
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    const Text(
+                      'Мои мероприятия',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                    TextButton.icon(
+                      onPressed: _showCreateEventDialog,
+                      icon: const Icon(Icons.add),
+                      label: const Text('Создать'),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 BlocBuilder<EventBloc, EventState>(
