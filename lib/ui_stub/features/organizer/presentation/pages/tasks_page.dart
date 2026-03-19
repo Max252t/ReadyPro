@@ -201,57 +201,57 @@ class _TasksPageState extends State<TasksPage> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  LayoutBuilder(
-                    builder: (context, c) {
-                      return GridView.count(
-                        crossAxisCount:
-                            AppBreakpoints.taskBoardColumns(c.maxWidth),
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        children: [
-                          _TaskColumn(
-                            title: 'Активные задачи (${active.length})',
-                            tasks: active,
-                            allParticipants: _allParticipants,
-                            onToggle: (task) {
-                              final updatedTask = Task(
-                                id: task.id,
-                                eventId: task.eventId,
-                                assigneeId: task.assigneeId,
-                                assignerId: task.assignerId,
-                                title: task.title,
-                                description: task.description,
-                                dueDate: task.dueDate,
-                                isCompleted: !task.isCompleted,
-                              );
-                              context.read<OrganizerBloc>().add(UpdateTask(updatedTask));
-                            },
-                            mutedCompleted: false,
-                          ),
-                          _TaskColumn(
-                            title: 'Выполненные задачи (${done.length})',
-                            tasks: done,
-                            allParticipants: _allParticipants,
-                            onToggle: (task) {
-                              final updatedTask = Task(
-                                id: task.id,
-                                eventId: task.eventId,
-                                assigneeId: task.assigneeId,
-                                assignerId: task.assignerId,
-                                title: task.title,
-                                description: task.description,
-                                dueDate: task.dueDate,
-                                isCompleted: !task.isCompleted,
-                              );
-                              context.read<OrganizerBloc>().add(UpdateTask(updatedTask));
-                            },
-                            mutedCompleted: true,
-                          ),
-                        ],
-                      );
-                    },
+                  Expanded(
+                    child: LayoutBuilder(
+                      builder: (context, c) {
+                        return GridView.count(
+                          crossAxisCount:
+                              AppBreakpoints.taskBoardColumns(c.maxWidth),
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
+                          children: [
+                            _TaskColumn(
+                              title: 'Активные задачи (${active.length})',
+                              tasks: active,
+                              allParticipants: _allParticipants,
+                              onToggle: (task) {
+                                final updatedTask = Task(
+                                  id: task.id,
+                                  eventId: task.eventId,
+                                  assigneeId: task.assigneeId,
+                                  assignerId: task.assignerId,
+                                  title: task.title,
+                                  description: task.description,
+                                  dueDate: task.dueDate,
+                                  isCompleted: !task.isCompleted,
+                                );
+                                context.read<OrganizerBloc>().add(UpdateTask(updatedTask));
+                              },
+                              mutedCompleted: false,
+                            ),
+                            _TaskColumn(
+                              title: 'Выполненные задачи (${done.length})',
+                              tasks: done,
+                              allParticipants: _allParticipants,
+                              onToggle: (task) {
+                                final updatedTask = Task(
+                                  id: task.id,
+                                  eventId: task.eventId,
+                                  assigneeId: task.assigneeId,
+                                  assignerId: task.assignerId,
+                                  title: task.title,
+                                  description: task.description,
+                                  dueDate: task.dueDate,
+                                  isCompleted: !task.isCompleted,
+                                );
+                                context.read<OrganizerBloc>().add(UpdateTask(updatedTask));
+                              },
+                              mutedCompleted: true,
+                            ),
+                          ],
+                        );
+                      },
+                    ),
                   ),
                 ],
               );
