@@ -14,10 +14,12 @@ import '../ui_stub/features/speaker/presentation/pages/speaker_talks_page.dart';
 import '../ui_stub/features/talk/presentation/pages/talk_details_page.dart';
 import '../ui_stub/shared/mock/ui_models.dart';
 import '../ui_stub/shared/route_args.dart';
+import '../ui/auth_test_screen.dart';
 
 class AppRoutes {
   static const login = '/login';
   static const profile = '/profile';
+  static const debug = '/debug';
 
   static const curatorDashboard = '/curator/dashboard';
   static const curatorReports = '/curator/reports';
@@ -39,6 +41,7 @@ class AppRoutes {
         profile: (context) => ProfilePage(
               role: uiRoleFromArgs(ModalRoute.of(context)?.settings.arguments),
             ),
+        debug: (_) => const AuthTestScreen(),
         curatorDashboard: (_) => const CuratorDashboardPage(),
         curatorReports: (_) => const CuratorReportsPage(),
         organizerDashboard: (_) => const OrganizerDashboardPage(),
@@ -59,8 +62,7 @@ class AppRoutes {
             ),
         talkDetails: (context) => TalkDetailsPage(
               role: uiRoleFromArgs(ModalRoute.of(context)?.settings.arguments),
-              talkId: talkIdFromArgs(ModalRoute.of(context)?.settings.arguments),
+              talkId: talkIdFromArgs(ModalRoute.of(context)?.settings.arguments) ?? '',
             ),
       };
 }
-

@@ -1,53 +1,75 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:ready_pro/blocs/auth/auth_bloc.dart';
+import 'package:ready_pro/blocs/auth/auth_event.dart';
+import 'package:ready_pro/blocs/auth/auth_state.dart';
+import 'package:ready_pro/models/user.dart';
 
 import '../../../../app/routes.dart';
 import '../../../../app/widgets/theme_toggle_button.dart';
 import '../../mock/ui_mock_data.dart';
 import '../../mock/ui_models.dart';
+import '../../route_args.dart';
 
 class RootShell extends StatelessWidget {
   final UiRole role;
   final Widget child;
   final String title;
+  final List<Widget>? actions;
 
   const RootShell({
     super.key,
     required this.role,
     required this.title,
     required this.child,
+    this.actions,
   });
 
   @override
   Widget build(BuildContext context) {
-    final user = UiMockData.userForRole(role);
+    final authState = context.watch<AuthBloc>().state;
+    if (authState is! AuthAuthenticated) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    
+    final user = authState.user;
     final navLinks = _navLinksForRole(role);
     final routeName = ModalRoute.of(context)?.settings.name ?? '';
     final isDesktop = MediaQuery.sizeOf(context).width >= 900;
+
+    // Сохраняем eventId при навигации
+    final currentArgs = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    final eventId = eventIdFromArgs(currentArgs);
 
     final nav = _NavContent(
       user: user,
       links: navLinks,
       selectedRouteName: routeName,
-      onNavigate: (route) => Navigator.pushReplacementNamed(
-        context,
-        route,
-        arguments: {'role': role},
-      ),
+      onNavigate: (route) {
+        final Map<String, dynamic> nextArgs = {'role': role};
+        if (eventId != null) nextArgs['eventId'] = eventId;
+        
+        Navigator.pushReplacementNamed(
+          context,
+          route,
+          arguments: nextArgs,
+        );
+      },
       onOpenProfile: () => Navigator.pushReplacementNamed(
         context,
         AppRoutes.profile,
         arguments: {'role': role},
       ),
+      onLogout: () => context.read<AuthBloc>().add(AuthSignOutRequested()),
     );
 
     return Scaffold(
       appBar: isDesktop
           ? null
           : AppBar(
-              title: const Text('Хакатон 2026'),
-              actions: const [
-                ThemeToggleButton(),
-                SizedBox(width: 4),
+              title: const Text('ReadyPro'),
+              actions: [
+                if (actions != null) ...actions!,
+                const ThemeToggleButton(),
+                const SizedBox(width: 4),
               ],
             ),
       drawer: isDesktop ? null : Drawer(child: nav),
@@ -78,6 +100,7 @@ class RootShell extends StatelessWidget {
                 ),
                 child: _PageFrame(
                   title: title,
+                  actions: actions,
                   child: child,
                 ),
               ),
@@ -92,27 +115,26 @@ class RootShell extends StatelessWidget {
 class _PageFrame extends StatelessWidget {
   final String title;
   final Widget child;
+  final List<Widget>? actions;
 
-  const _PageFrame({required this.title, required this.child});
+  const _PageFrame({required this.title, required this.child, this.actions});
 
   @override
   Widget build(BuildContext context) {
     return ListView(
       children: [
-        Text(
-          title,
-          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          'Кликабельный UI (заглушки) • без логики',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withValues(
-                      alpha: 0.6,
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
               ),
+            ),
+            if (actions != null) ...actions!,
+          ],
         ),
         const SizedBox(height: 20),
         child,
@@ -124,11 +146,12 @@ class _PageFrame extends StatelessWidget {
 typedef _Navigate = void Function(String routeName);
 
 class _NavContent extends StatelessWidget {
-  final UiUser user;
+  final Profile user;
   final List<_NavLink> links;
   final String selectedRouteName;
   final _Navigate onNavigate;
   final VoidCallback onOpenProfile;
+  final VoidCallback onLogout;
 
   const _NavContent({
     required this.user,
@@ -136,6 +159,7 @@ class _NavContent extends StatelessWidget {
     required this.selectedRouteName,
     required this.onNavigate,
     required this.onOpenProfile,
+    required this.onLogout,
   });
 
   @override
@@ -148,7 +172,7 @@ class _NavContent extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Хакатон 2026',
+                'ReadyPro',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -162,11 +186,8 @@ class _NavContent extends StatelessWidget {
                         Theme.of(context).colorScheme.primary.withValues(
                               alpha: 0.12,
                             ),
-                    child: Icon(
-                      _roleIcon(user.role),
-                      size: 18,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
+                    backgroundImage: user.avatarUrl != null ? NetworkImage(user.avatarUrl!) : null,
+                    child: user.avatarUrl == null ? const Icon(Icons.person, size: 18) : null,
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -174,7 +195,7 @@ class _NavContent extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          user.name,
+                          user.fullName,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -182,7 +203,7 @@ class _NavContent extends StatelessWidget {
                               ),
                         ),
                         Text(
-                          _roleLabel(user.role),
+                          'Активный профиль',
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                 color: Theme.of(context)
                                     .colorScheme
@@ -244,11 +265,7 @@ class _NavContent extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               TextButton.icon(
-                onPressed: () => Navigator.pushNamedAndRemoveUntil(
-                  context,
-                  AppRoutes.login,
-                  (_) => false,
-                ),
+                onPressed: onLogout,
                 icon: const Icon(Icons.logout, size: 18),
                 label: const Text('Выйти'),
                 style: TextButton.styleFrom(
@@ -403,30 +420,3 @@ List<_NavLink> _navLinksForRole(UiRole role) {
       ];
   }
 }
-
-String _roleLabel(UiRole role) {
-  switch (role) {
-    case UiRole.organizer:
-      return 'Организатор';
-    case UiRole.curator:
-      return 'Куратор';
-    case UiRole.speaker:
-      return 'Спикер';
-    case UiRole.participant:
-      return 'Участник';
-  }
-}
-
-IconData _roleIcon(UiRole role) {
-  switch (role) {
-    case UiRole.organizer:
-      return Icons.event_available_outlined;
-    case UiRole.curator:
-      return Icons.fact_check_outlined;
-    case UiRole.speaker:
-      return Icons.record_voice_over_outlined;
-    case UiRole.participant:
-      return Icons.badge_outlined;
-  }
-}
-

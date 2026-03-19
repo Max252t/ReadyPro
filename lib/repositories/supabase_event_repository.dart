@@ -70,6 +70,24 @@ class SupabaseEventRepository implements EventRepository {
   }
 
   @override
+  Future<void> joinEvent({
+    required String eventId,
+    required String userId,
+    required UserRole role,
+  }) async {
+    try {
+      await _client.from('event_participants').upsert({
+        'event_id': eventId,
+        'user_id': userId,
+        'role': role.name,
+        'joined_at': DateTime.now().toIso8601String(),
+      });
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  @override
   Future<List<Profile>> getEventParticipants(String eventId, {UserRole? role}) async {
     var query = _client.from('event_participants').select('profiles(*)').eq('event_id', eventId);
     
@@ -92,9 +110,10 @@ class SupabaseEventRepository implements EventRepository {
     return Event.fromJson(data);
   }
 
+  @override
   Future<String?> uploadEventImage(String eventId, dynamic imageFile) async {
     try {
-      final fileName = '$eventId/cover.png';
+      final fileName = 'events/$eventId/cover_${DateTime.now().millisecondsSinceEpoch}.png';
       
       if (kIsWeb) {
         final bytes = await (imageFile as dynamic).readAsBytes();

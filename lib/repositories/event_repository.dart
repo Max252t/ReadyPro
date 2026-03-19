@@ -17,6 +17,12 @@ abstract class EventRepository {
     required UserRole role,
   });
 
+  Future<void> joinEvent({
+    required String eventId,
+    required String userId,
+    required UserRole role,
+  });
+
   Future<List<Profile>> getEventParticipants(String eventId, {UserRole? role});
 
   // Метод для загрузки обложки мероприятия

@@ -1,8 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:ready_pro/blocs/auth/auth_bloc.dart';
+import 'package:ready_pro/blocs/auth/auth_state.dart';
+import 'package:ready_pro/blocs/organizer/organizer_bloc.dart';
+import 'package:ready_pro/blocs/organizer/organizer_event.dart';
+import 'package:ready_pro/blocs/organizer/organizer_state.dart';
+import 'package:ready_pro/blocs/event/event_bloc.dart';
+import 'package:ready_pro/blocs/event/event_event.dart';
+import 'package:ready_pro/blocs/event/event_state.dart';
+import 'package:ready_pro/models/task.dart';
+import 'package:ready_pro/models/user.dart';
+import 'package:ready_pro/core/enums.dart';
 
-import '../../../../shared/mock/ui_mock_data.dart';
-import '../../../../shared/mock/ui_models.dart';
 import '../../../../shared/presentation/layout/root_shell.dart';
+import '../../../../shared/mock/ui_models.dart';
+import '../../../../shared/route_args.dart';
 
 class TasksPage extends StatefulWidget {
   const TasksPage({super.key});
@@ -12,130 +24,241 @@ class TasksPage extends StatefulWidget {
 }
 
 class _TasksPageState extends State<TasksPage> {
-  /// Локальное переопределение completed (UI-only).
-  final Map<String, bool> _completedOverride = {};
+  String? _eventId;
+  List<Profile> _allParticipants = [];
 
-  bool _isDone(UiTask t) => _completedOverride[t.id] ?? t.completed;
-
-  void _toggle(UiTask t) {
-    setState(() {
-      final cur = _isDone(t);
-      _completedOverride[t.id] = !cur;
-    });
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final newEventId = eventIdFromArgs(ModalRoute.of(context)?.settings.arguments);
+    if (newEventId != null && newEventId.isNotEmpty && _eventId != newEventId) {
+      _eventId = newEventId;
+      _refreshData();
+    }
   }
 
-  Future<void> _openCreateDialog() async {
+  void _refreshData() {
+    if (_eventId == null) return;
+    context.read<OrganizerBloc>().add(FetchOrganizerDashboard(_eventId!));
+    context.read<EventBloc>().add(LoadEventParticipants(_eventId!));
+  }
+
+  Future<void> _openCreateDialog(BuildContext context, String eventId) async {
+    final titleController = TextEditingController();
+    final descController = TextEditingController();
+    Profile? selectedAssignee;
+    final dueDateController = TextEditingController(
+      text: DateTime.now().add(const Duration(days: 7)).toIso8601String().split('T')[0],
+    );
+
+    // Фильтруем участников: только кураторы и спикеры
+    // (Хотя в некоторых случаях можно назначать и участникам, но по запросу - кураторы и спикеры)
+    // Мы можем сделать это прямо в диалоге или заранее.
+    
     await showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Создать задачу'),
-        content: const SizedBox(
-          width: 480,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(decoration: InputDecoration(labelText: 'Назначить (id)')),
-              SizedBox(height: 10),
-              TextField(decoration: InputDecoration(labelText: 'Название задачи')),
-              SizedBox(height: 10),
-              TextField(
-                maxLines: 3,
-                decoration: InputDecoration(labelText: 'Описание'),
-              ),
-              SizedBox(height: 10),
-              TextField(
-                decoration: InputDecoration(
-                  labelText: 'Срок выполнения',
-                  hintText: 'ГГГГ-ММ-ДД',
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setState) {
+          final candidates = _allParticipants;
+
+          return AlertDialog(
+            title: const Text('Создать задачу'),
+            content: SizedBox(
+              width: 480,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DropdownButtonFormField<Profile>(
+                      isExpanded: true,
+                      decoration: const InputDecoration(labelText: 'Исполнитель (Поиск по имени)'),
+                      items: candidates.map((p) => DropdownMenuItem(
+                        value: p,
+                        child: Text('${p.fullName} (${p.email})'),
+                      )).toList(),
+                      onChanged: (val) => setState(() => selectedAssignee = val),
+                      value: selectedAssignee,
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: titleController,
+                      decoration: const InputDecoration(labelText: 'Название задачи'),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: descController,
+                      maxLines: 3,
+                      decoration: const InputDecoration(labelText: 'Описание'),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: dueDateController,
+                      decoration: const InputDecoration(
+                        labelText: 'Срок выполнения',
+                        hintText: 'ГГГГ-ММ-ДД',
+                      ),
+                    ),
+                  ],
                 ),
               ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Отмена')),
+              FilledButton(
+                onPressed: () {
+                  if (selectedAssignee == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Выберите исполнителя')));
+                    return;
+                  }
+                  
+                  final authState = context.read<AuthBloc>().state;
+                  String currentUserId = '';
+                  if (authState is AuthAuthenticated) {
+                    currentUserId = authState.user.id;
+                  }
+
+                  final task = Task(
+                    id: '', 
+                    eventId: eventId,
+                    assigneeId: selectedAssignee!.id,
+                    assignerId: currentUserId,
+                    title: titleController.text,
+                    description: descController.text,
+                    dueDate: DateTime.tryParse(dueDateController.text) ?? DateTime.now().add(const Duration(days: 7)),
+                    isCompleted: false,
+                  );
+                  context.read<OrganizerBloc>().add(CreateTask(task));
+                  Navigator.pop(ctx);
+                },
+                child: const Text('Создать'),
+              ),
             ],
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Отмена')),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Задача создана (заглушка)')),
-              );
-            },
-            child: const Text('Создать'),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final tasks = UiMockData.tasks;
-    final assignable = UiMockData.users
-        .where((u) => u.role == UiRole.curator || u.role == UiRole.speaker)
-        .toList();
+    if (_eventId == null) {
+      return const RootShell(
+        role: UiRole.organizer,
+        title: 'Управление задачами',
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
 
-    final active = tasks.where((t) => !_isDone(t)).toList();
-    final done = tasks.where((t) => _isDone(t)).toList();
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<EventBloc, EventState>(
+          listener: (context, state) {
+            if (state is EventParticipantsLoaded) {
+              setState(() {
+                _allParticipants = state.participants;
+              });
+            }
+          },
+        ),
+      ],
+      child: RootShell(
+        role: UiRole.organizer,
+        title: 'Управление задачами',
+        child: BlocBuilder<OrganizerBloc, OrganizerState>(
+          builder: (context, state) {
+            if (state is OrganizerLoading) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-    return RootShell(
-      role: UiRole.organizer,
-      title: 'Управление задачами',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Создавайте и отслеживайте задачи для команды',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withValues(alpha: 0.6),
-                      ),
-                ),
-              ),
-              FilledButton.icon(
-                onPressed: _openCreateDialog,
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Новая задача'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          LayoutBuilder(
-            builder: (context, c) {
-              final two = c.maxWidth >= 900;
-              return GridView.count(
-                crossAxisCount: two ? 2 : 1,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
+            if (state is OrganizerDashboardLoaded) {
+              final tasks = state.tasks;
+              final eventId = state.event.id;
+
+              final active = tasks.where((t) => !t.isCompleted).toList();
+              final done = tasks.where((t) => t.isCompleted).toList();
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _TaskColumn(
-                    title: 'Активные задачи (${active.length})',
-                    tasks: active,
-                    assignable: assignable,
-                    isDone: _isDone,
-                    onToggle: _toggle,
-                    mutedCompleted: false,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Создавайте и отслеживайте задачи для команды',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .withValues(alpha: 0.6),
+                              ),
+                        ),
+                      ),
+                      FilledButton.icon(
+                        onPressed: () => _openCreateDialog(context, eventId),
+                        icon: const Icon(Icons.add, size: 18),
+                        label: const Text('Новая задача'),
+                      ),
+                    ],
                   ),
-                  _TaskColumn(
-                    title: 'Выполненные задачи (${done.length})',
-                    tasks: done,
-                    assignable: assignable,
-                    isDone: _isDone,
-                    onToggle: _toggle,
-                    mutedCompleted: true,
+                  const SizedBox(height: 16),
+                  LayoutBuilder(
+                    builder: (context, c) {
+                      final two = c.maxWidth >= 900;
+                      return GridView.count(
+                        crossAxisCount: two ? 2 : 1,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        children: [
+                          _TaskColumn(
+                            title: 'Активные задачи (${active.length})',
+                            tasks: active,
+                            allParticipants: _allParticipants,
+                            onToggle: (task) {
+                              final updatedTask = Task(
+                                id: task.id,
+                                eventId: task.eventId,
+                                assigneeId: task.assigneeId,
+                                assignerId: task.assignerId,
+                                title: task.title,
+                                description: task.description,
+                                dueDate: task.dueDate,
+                                isCompleted: !task.isCompleted,
+                              );
+                              context.read<OrganizerBloc>().add(UpdateTask(updatedTask));
+                            },
+                            mutedCompleted: false,
+                          ),
+                          _TaskColumn(
+                            title: 'Выполненные задачи (${done.length})',
+                            tasks: done,
+                            allParticipants: _allParticipants,
+                            onToggle: (task) {
+                              final updatedTask = Task(
+                                id: task.id,
+                                eventId: task.eventId,
+                                assigneeId: task.assigneeId,
+                                assignerId: task.assignerId,
+                                title: task.title,
+                                description: task.description,
+                                dueDate: task.dueDate,
+                                isCompleted: !task.isCompleted,
+                              );
+                              context.read<OrganizerBloc>().add(UpdateTask(updatedTask));
+                            },
+                            mutedCompleted: true,
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ],
               );
-            },
-          ),
-        ],
+            }
+            return const Center(child: Text('Нет данных'));
+          },
+        ),
       ),
     );
   }
@@ -143,20 +266,27 @@ class _TasksPageState extends State<TasksPage> {
 
 class _TaskColumn extends StatelessWidget {
   final String title;
-  final List<UiTask> tasks;
-  final List<UiUser> assignable;
-  final bool Function(UiTask) isDone;
-  final void Function(UiTask) onToggle;
+  final List<Task> tasks;
+  final List<Profile> allParticipants;
+  final void Function(Task) onToggle;
   final bool mutedCompleted;
 
   const _TaskColumn({
     required this.title,
     required this.tasks,
-    required this.assignable,
-    required this.isDone,
+    required this.allParticipants,
     required this.onToggle,
     required this.mutedCompleted,
   });
+
+  String _getAssigneeName(String id) {
+    try {
+      final p = allParticipants.firstWhere((p) => p.id == id);
+      return p.fullName;
+    } catch (_) {
+      return id;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -189,103 +319,98 @@ class _TaskColumn extends StatelessWidget {
                 ),
               )
             else
-              for (final task in tasks)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Material(
-                    color: mutedCompleted
-                        ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.04)
-                        : null,
-                    borderRadius: BorderRadius.circular(12),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(12),
-                      onTap: () {},
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Theme.of(context).dividerColor),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Checkbox(
-                              value: isDone(task),
-                              onChanged: (_) => onToggle(task),
-                            ),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    task.title,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodyMedium
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.w600,
-                                          decoration: mutedCompleted
-                                              ? TextDecoration.lineThrough
-                                              : null,
-                                          color: mutedCompleted
-                                              ? Theme.of(context)
-                                                  .colorScheme
-                                                  .onSurface
-                                                  .withValues(alpha: 0.55)
-                                              : null,
-                                        ),
-                                  ),
-                                  if (task.description.isNotEmpty) ...[
-                                    const SizedBox(height: 4),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: tasks.length,
+                  itemBuilder: (context, index) {
+                    final task = tasks[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Material(
+                        color: mutedCompleted
+                            ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.04)
+                            : null,
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Theme.of(context).dividerColor),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Checkbox(
+                                value: task.isCompleted,
+                                onChanged: (_) => onToggle(task),
+                              ),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
                                     Text(
-                                      task.description,
+                                      task.title,
                                       style: Theme.of(context)
                                           .textTheme
-                                          .bodySmall
+                                          .bodyMedium
                                           ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                            decoration: task.isCompleted
+                                                ? TextDecoration.lineThrough
+                                                : null,
+                                            color: task.isCompleted
+                                                ? Theme.of(context)
+                                                    .colorScheme
+                                                    .onSurface
+                                                    .withValues(alpha: 0.55)
+                                                : null,
+                                          ),
+                                    ),
+                                    if (task.description != null && task.description!.isNotEmpty) ...[
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        task.description!,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurface
+                                                  .withValues(alpha: 0.6),
+                                            ),
+                                      ),
+                                    ],
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      'Исполнитель: ${_getAssigneeName(task.assigneeId)}',
+                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                             color: Theme.of(context)
                                                 .colorScheme
                                                 .onSurface
-                                                .withValues(alpha: 0.6),
+                                                .withValues(alpha: 0.5),
                                           ),
                                     ),
                                   ],
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    _assigneeName(task, assignable),
-                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .onSurface
-                                              .withValues(alpha: 0.5),
-                                        ),
-                                  ),
-                                ],
+                                ),
                               ),
-                            ),
-                          ],
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, size: 20),
+                                onPressed: () {
+                                  context.read<OrganizerBloc>().add(DeleteTask(task.id, task.eventId));
+                                },
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
                 ),
+              ),
           ],
         ),
       ),
     );
-  }
-}
-
-String _assigneeName(UiTask task, List<UiUser> assignable) {
-  final u = assignable.where((x) => x.id == task.assignedTo).firstOrNull;
-  if (u == null) return 'Исполнитель: —';
-  final role = u.role == UiRole.curator ? 'Куратор' : 'Спикер';
-  return '$role: ${u.name}';
-}
-
-extension _FirstOrNull<E> on Iterable<E> {
-  E? get firstOrNull {
-    final it = iterator;
-    return it.moveNext() ? it.current : null;
   }
 }

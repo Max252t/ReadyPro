@@ -27,6 +27,34 @@ class Event {
     this.updatedAt,
   });
 
+  Event copyWith({
+    String? id,
+    String? title,
+    String? description,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? location,
+    String? imageUrl,
+    EventStatus? status,
+    String? createdBy,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return Event(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      location: location ?? this.location,
+      imageUrl: imageUrl ?? this.imageUrl,
+      status: status ?? this.status,
+      createdBy: createdBy ?? this.createdBy,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
   factory Event.fromJson(Map<String, dynamic> json) {
     return Event(
       id: json['id'],
