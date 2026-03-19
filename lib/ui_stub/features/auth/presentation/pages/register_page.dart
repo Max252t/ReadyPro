@@ -82,7 +82,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       controller: _passwordController,
                       obscureText: true,
                       decoration: const InputDecoration(
-                        hintText: '••••••••',
+                        hintText: 'ваш пароль',
                       ),
                     ),
                     const SizedBox(height: 24),
