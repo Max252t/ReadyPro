@@ -68,7 +68,7 @@ class RootShell extends StatelessWidget {
               title: const Text('ReadyPro'),
               actions: [
                 if (actions != null) ...actions!,
-                const ThemeToggleButton(),
+                // const ThemeToggleButton(), // Убрано по просьбе пользователя
                 const SizedBox(width: 4),
               ],
             ),
@@ -121,7 +121,9 @@ class _PageFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
+    // Используем Column вместо ListView, чтобы избежать конфликтов скролла внутри страниц
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
@@ -137,7 +139,7 @@ class _PageFrame extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 20),
-        child,
+        Expanded(child: child),
       ],
     );
   }
@@ -186,8 +188,10 @@ class _NavContent extends StatelessWidget {
                         Theme.of(context).colorScheme.primary.withValues(
                               alpha: 0.12,
                             ),
-                    backgroundImage: user.avatarUrl != null ? NetworkImage(user.avatarUrl!) : null,
-                    child: user.avatarUrl == null ? const Icon(Icons.person, size: 18) : null,
+                    backgroundImage: (user.avatarUrl != null && user.avatarUrl!.isNotEmpty) 
+                      ? NetworkImage(user.avatarUrl!) 
+                      : null,
+                    child: (user.avatarUrl == null || user.avatarUrl!.isEmpty) ? const Icon(Icons.person, size: 18) : null,
                   ),
                   const SizedBox(width: 10),
                   Expanded(
