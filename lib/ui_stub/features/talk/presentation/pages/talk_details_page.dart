@@ -49,6 +49,25 @@ class _TalkDetailsPageState extends State<TalkDetailsPage> {
     _messageController.clear();
   }
 
+  /// Имя из вложенного профиля сообщения (Supabase `profiles(*)`), иначе id.
+  static String _messageAuthorDisplayName(Message msg) {
+    final p = msg.user;
+    if (p != null) {
+      final name = p.fullName.trim();
+      if (name.isNotEmpty) return name;
+      final email = p.email.trim();
+      if (email.isNotEmpty) return email;
+    }
+    return msg.userId;
+  }
+
+  /// Название секции из состояния блока, иначе id (если загрузка секции не удалась).
+  static String _sectionDisplayName(TalkState state, Talk talk) {
+    final name = state.section?.name.trim();
+    if (name != null && name.isNotEmpty) return name;
+    return talk.sectionId;
+  }
+
   List<Widget> _scrollableDetailChildren({
     required BuildContext context,
     required TalkState state,
@@ -70,7 +89,7 @@ class _TalkDetailsPageState extends State<TalkDetailsPage> {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                'Секция ID: ${talk.sectionId}',
+                'Секция: ${_sectionDisplayName(state, talk)}',
                 style: Theme.of(context).textTheme.bodySmall,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -102,7 +121,7 @@ class _TalkDetailsPageState extends State<TalkDetailsPage> {
             decoration: BoxDecoration(
               color: msg.userId == currentUserId
                   ? Theme.of(context).colorScheme.primaryContainer
-                  : Theme.of(context).colorScheme.surfaceVariant,
+                  : Theme.of(context).colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
@@ -114,7 +133,7 @@ class _TalkDetailsPageState extends State<TalkDetailsPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Пользователь: ${msg.userId}',
+                  _messageAuthorDisplayName(msg),
                   style: Theme.of(context).textTheme.labelSmall,
                 ),
               ],
