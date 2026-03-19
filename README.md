@@ -67,8 +67,9 @@
 
 ## 🛠️ Технологический стек
 
-- **Frontend:** React + TypeScript, Vite, Tailwind CSS
-- **Backend:** Node.js (Express) / Python (FastAPI) — на выбор команды
-- **База данных:** PostgreSQL / MongoDB
-- **Реальное время:** Socket.IO (для чатов и уведомлений)
-- **Инфраструктура:** Docker, Nginx, GitHub Actions (CI/CD)
+- **Клиент:** Flutter (Dart 3.11+), Material Design
+- **Бэкенд и данные:** [Supabase](https://supabase.com/) — аутентификация, REST API (PostgREST), хранилище файлов
+- **База данных:** PostgreSQL (управляется Supabase)
+- **Реальное время:** Supabase Realtime (потоки изменений таблиц, в т.ч. для сообщений в чатах)
+- **Архитектура приложения:** внедрение зависимостей ([get_it](https://pub.dev/packages/get_it)), репозитории поверх Supabase SDK
+- **Тестирование:** `flutter_test`, [mocktail](https://pub.dev/packages/mocktail)
