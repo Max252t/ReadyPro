@@ -6,8 +6,10 @@ import 'package:ready_pro/blocs/talk/talk_bloc.dart';
 import 'package:ready_pro/blocs/talk/talk_event.dart';
 import 'package:ready_pro/blocs/talk/talk_state.dart';
 import 'package:ready_pro/models/message.dart';
+import 'package:ready_pro/models/talk.dart';
 import 'package:ready_pro/models/feedback.dart' as model;
 import 'package:ready_pro/core/enums.dart';
+import 'package:ready_pro/app/layout/app_breakpoints.dart';
 
 import '../../../../shared/mock/ui_models.dart';
 import '../../../../shared/presentation/layout/root_shell.dart';
@@ -47,6 +49,136 @@ class _TalkDetailsPageState extends State<TalkDetailsPage> {
     _messageController.clear();
   }
 
+  List<Widget> _scrollableDetailChildren({
+    required BuildContext context,
+    required TalkState state,
+    required Talk talk,
+    String? currentUserId,
+  }) {
+    return [
+      SizedBox(
+        width: double.infinity,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            UiBadge(
+              talk.status == TalkStatus.ready ? 'Готов' : 'В обработке',
+              variant: talk.status == TalkStatus.ready
+                  ? UiBadgeVariant.defaultFill
+                  : UiBadgeVariant.secondary,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Секция ID: ${talk.sectionId}',
+                style: Theme.of(context).textTheme.bodySmall,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 16),
+      Text(
+        talk.description ?? 'Описание отсутствует',
+        style: Theme.of(context).textTheme.bodyLarge,
+      ),
+      const SizedBox(height: 24),
+      const Divider(),
+      Text(
+        'Вопросы и обсуждение',
+        style: Theme.of(context).textTheme.titleMedium,
+      ),
+      const SizedBox(height: 12),
+      for (final msg in state.messages)
+        Align(
+          alignment: msg.userId == currentUserId
+              ? Alignment.centerRight
+              : Alignment.centerLeft,
+          child: Container(
+            margin: const EdgeInsets.symmetric(vertical: 4),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: msg.userId == currentUserId
+                  ? Theme.of(context).colorScheme.primaryContainer
+                  : Theme.of(context).colorScheme.surfaceVariant,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  msg.content,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Пользователь: ${msg.userId}',
+                  style: Theme.of(context).textTheme.labelSmall,
+                ),
+              ],
+            ),
+          ),
+        ),
+      if (widget.role == UiRole.participant) ...[
+        const SizedBox(height: 32),
+        const Divider(),
+        Text(
+          'Оставить отзыв',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 0,
+          runSpacing: 0,
+          children: List.generate(5, (index) {
+            return IconButton(
+              onPressed: () {
+                if (currentUserId != null) {
+                  final feedback = model.Feedback(
+                    id: '',
+                    talkId: widget.talkId,
+                    userId: currentUserId,
+                    rating: index + 1,
+                    comment: '',
+                  );
+                  context.read<TalkBloc>().add(SubmitFeedbackRequested(feedback));
+                }
+              },
+              icon: const Icon(Icons.star_border),
+            );
+          }),
+        ),
+      ],
+    ];
+  }
+
+  Widget _messageInputBar(BuildContext context, String? currentUserId) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Expanded(
+          child: TextField(
+            controller: _messageController,
+            minLines: 1,
+            maxLines: 4,
+            decoration: const InputDecoration(
+              hintText: 'Задать вопрос...',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        IconButton(
+          onPressed: () => _sendMessage(currentUserId),
+          icon: const Icon(Icons.send),
+          color: Theme.of(context).colorScheme.primary,
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<TalkBloc, TalkState>(
@@ -74,123 +206,53 @@ class _TalkDetailsPageState extends State<TalkDetailsPage> {
         return RootShell(
           role: widget.role,
           title: talk.title,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final items = _scrollableDetailChildren(
+                context: context,
+                state: state,
+                talk: talk,
+                currentUserId: currentUserId,
+              );
+              final listView = ListView(
+                padding: EdgeInsets.zero,
+                children: items,
+              );
+
+              /// На широком экране — тот же приём, что с `Column`, но ось **Row**:
+              /// слева `Expanded` + прокрутка, справа колонка с вводом.
+              final useRowLayout =
+                  constraints.maxWidth >= AppBreakpoints.expanded;
+
+              if (useRowLayout) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    UiBadge(
-                      talk.status == TalkStatus.ready ? 'Готов' : 'В обработке',
-                      variant: talk.status == TalkStatus.ready
-                          ? UiBadgeVariant.defaultFill
-                          : UiBadgeVariant.secondary,
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Секция ID: ${talk.sectionId}',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  talk.description ?? 'Описание отсутствует',
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
-                const SizedBox(height: 24),
-                const Divider(),
-                Text(
-                  'Вопросы и обсуждение',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 12),
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: state.messages.length,
-                  itemBuilder: (context, index) {
-                    final msg = state.messages[index];
-                    final isMe = msg.userId == currentUserId;
-                    return Align(
-                      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(vertical: 4),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: isMe 
-                              ? Theme.of(context).colorScheme.primaryContainer 
-                              : Theme.of(context).colorScheme.surfaceVariant,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              msg.content,
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Пользователь: ${msg.userId}',
-                              style: Theme.of(context).textTheme.labelSmall,
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _messageController,
-                        decoration: const InputDecoration(
-                          hintText: 'Задать вопрос...',
-                          border: OutlineInputBorder(),
+                    Expanded(child: listView),
+                    const SizedBox(width: 16),
+                    SizedBox(
+                      width: 320,
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Align(
+                          alignment: Alignment.bottomCenter,
+                          child: _messageInputBar(context, currentUserId),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      onPressed: () => _sendMessage(currentUserId),
-                      icon: const Icon(Icons.send),
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
                   ],
-                ),
-                if (widget.role == UiRole.participant) ...[
-                  const SizedBox(height: 32),
-                  const Divider(),
-                  Text(
-                    'Оставить отзыв',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: List.generate(5, (index) {
-                      return IconButton(
-                        onPressed: () {
-                          if (currentUserId != null) {
-                            final feedback = model.Feedback(
-                              id: '',
-                              talkId: widget.talkId,
-                              userId: currentUserId,
-                              rating: index + 1,
-                              comment: '',
-                            );
-                            context.read<TalkBloc>().add(SubmitFeedbackRequested(feedback));
-                          }
-                        },
-                        icon: const Icon(Icons.star_border),
-                      );
-                    }),
-                  ),
+                );
+              }
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: listView),
+                  const SizedBox(height: 16),
+                  _messageInputBar(context, currentUserId),
                 ],
-              ],
-            ),
+              );
+            },
           ),
         );
       },
