@@ -198,7 +198,14 @@ class _ProfilePageState extends State<ProfilePage> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text('Основная информация', style: TextStyle(fontWeight: FontWeight.bold)),
+                            const Expanded(
+                              child: Text(
+                                'Основная информация',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                            ),
                             IconButton(onPressed: _showEditProfileDialog, icon: const Icon(Icons.edit, size: 20)),
                           ],
                         ),
@@ -265,16 +272,33 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Мои мероприятия', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    TextButton.icon(
-                      onPressed: _showCreateEventDialog,
-                      icon: const Icon(Icons.add),
-                      label: const Text('Создать'),
-                    ),
-                  ],
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isNarrow = constraints.maxWidth < 220;
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: const Text(
+                            'Мои мероприятия',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        ),
+                        isNarrow
+                            ? IconButton(
+                                onPressed: _showCreateEventDialog,
+                                icon: const Icon(Icons.add),
+                              )
+                            : TextButton.icon(
+                                onPressed: _showCreateEventDialog,
+                                icon: const Icon(Icons.add),
+                                label: const Text('Создать'),
+                              ),
+                      ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 12),
                 BlocBuilder<EventBloc, EventState>(
