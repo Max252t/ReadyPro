@@ -15,6 +15,7 @@ import {
 import { useEffect, useState } from 'react';
 import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
 import { UserAvatar } from './UserAvatar';
+import { ThemeToggle } from './ThemeToggle';
 
 export function RootLayout() {
   const { user, logout } = useAuth();
@@ -104,6 +105,10 @@ export function RootLayout() {
       </nav>
 
       <div className="p-4 border-t space-y-2">
+        <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-md bg-muted/50">
+          <span className="text-sm text-muted-foreground">Тема</span>
+          <ThemeToggle />
+        </div>
         <Link
           to="/profile"
           onClick={() => setOpen(false)}
@@ -132,7 +137,7 @@ export function RootLayout() {
       </aside>
 
       {/* Mobile header */}
-      <div className="md:hidden fixed top-0 left-0 right-0 h-16 border-b bg-card z-50 flex items-center px-4">
+      <div className="md:hidden fixed top-0 left-0 right-0 h-16 border-b bg-card z-50 flex items-center px-4 gap-2">
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon">
@@ -145,7 +150,8 @@ export function RootLayout() {
             </div>
           </SheetContent>
         </Sheet>
-        <h1 className="ml-4 font-semibold">Хакатон 2026</h1>
+        <h1 className="ml-2 font-semibold truncate flex-1 min-w-0">Хакатон 2026</h1>
+        <ThemeToggle />
       </div>
 
       {/* Main content */}

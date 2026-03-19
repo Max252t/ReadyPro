@@ -6,6 +6,7 @@ import { Checkbox } from '../components/ui/checkbox';
 import { Separator } from '../components/ui/separator';
 import { UserCircle, Mail, Briefcase, CheckSquare } from 'lucide-react';
 import { UserAvatar } from '../components/UserAvatar';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 export function ProfilePage() {
   const { user } = useAuth();
@@ -27,12 +28,18 @@ export function ProfilePage() {
 
   return (
     <div className="max-w-4xl space-y-6">
-      <div>
-        <h1 className="text-3xl font-semibold mb-2">Профиль</h1>
-        <p className="text-muted-foreground">
-          Ваша информация и активность
-        </p>
-      </div>
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-semibold mb-2">Профиль</h1>
+          <p className="text-muted-foreground">
+            Ваша информация и активность
+          </p>
+        </div>
+        <div className="flex items-center gap-2 sm:pt-1">
+          <span className="text-sm text-muted-foreground whitespace-nowrap">Тема оформления</span>
+          <ThemeToggle />
+        </div>
+      </header>
 
       <Card>
         <CardHeader>

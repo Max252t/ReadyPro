@@ -8,15 +8,21 @@ class LoginCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return DecoratedBox(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            AppColors.loginGradientFrom,
-            AppColors.loginGradientTo,
-          ],
+          colors: dark
+              ? const [
+                  AppColors.loginGradientFromDark,
+                  AppColors.loginGradientToDark,
+                ]
+              : const [
+                  AppColors.loginGradientFrom,
+                  AppColors.loginGradientTo,
+                ],
         ),
       ),
       child: SafeArea(
