@@ -108,7 +108,15 @@ class EventBloc extends Bloc<EventEvent, EventState> {
       }
       
       final eventToCreate = event.event.copyWith(imageUrl: imageUrl);
-      await _eventRepository.createEvent(eventToCreate);
+      final createdEventId = await _eventRepository.createEvent(eventToCreate);
+
+      // Чтобы созданное мероприятие попадало в "Мои мероприятия" и открывалось в нужном контексте,
+      // добавляем создателя как organizer участника мероприятия.
+      await _eventRepository.joinEvent(
+        eventId: createdEventId,
+        userId: event.event.createdBy,
+        role: UserRole.organizer,
+      );
       
       emit(EventOperationSuccess('Мероприятие создано'));
       // Refresh my events after creation

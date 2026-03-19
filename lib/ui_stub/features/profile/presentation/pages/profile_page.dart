@@ -258,8 +258,11 @@ class _ProfilePageState extends State<ProfilePage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text('Мои мероприятия', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    if (widget.role == UiRole.organizer)
-                      TextButton.icon(onPressed: _showCreateEventDialog, icon: const Icon(Icons.add), label: const Text('Создать')),
+                    TextButton.icon(
+                      onPressed: _showCreateEventDialog,
+                      icon: const Icon(Icons.add),
+                      label: const Text('Создать'),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),

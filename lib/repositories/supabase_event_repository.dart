@@ -138,7 +138,7 @@ class SupabaseEventRepository implements EventRepository {
   }
 
   @override
-  Future<void> createEvent(Event event) async {
+  Future<String> createEvent(Event event) async {
     try {
       final user = _client.auth.currentUser;
       if (user == null) throw Exception('Пользователь не авторизован');
@@ -154,7 +154,15 @@ class SupabaseEventRepository implements EventRepository {
         'image_url': event.imageUrl,
       };
 
-      await _client.from('events').insert(eventData);
+      final inserted = await _client
+          .from('events')
+          .insert(eventData)
+          .select('id')
+          .single();
+
+      final id = inserted['id'];
+      if (id is String) return id;
+      return id.toString();
     } catch (e) {
       rethrow;
     }

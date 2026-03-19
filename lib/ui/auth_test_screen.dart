@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:ready_pro/core/di.dart';
@@ -295,7 +294,12 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
         imageUrl: imageUrl,
       );
       
-      await getIt<EventRepository>().createEvent(newEvent);
+      final createdEventId = await getIt<EventRepository>().createEvent(newEvent);
+      await getIt<EventRepository>().joinEvent(
+        eventId: createdEventId,
+        userId: _currentUser!.id,
+        role: UserRole.organizer,
+      );
       _loadMyEvents();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка создания: $e')));
