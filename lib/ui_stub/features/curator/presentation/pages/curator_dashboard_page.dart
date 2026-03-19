@@ -10,7 +10,9 @@ import 'package:ready_pro/blocs/organizer/organizer_event.dart';
 import 'package:ready_pro/blocs/organizer/organizer_state.dart';
 import 'package:ready_pro/blocs/event/event_bloc.dart';
 import 'package:ready_pro/blocs/event/event_event.dart';
+import 'package:ready_pro/blocs/event/event_state.dart';
 import 'package:ready_pro/core/enums.dart';
+import 'package:ready_pro/models/user.dart';
 
 import '../../../../../app/routes.dart';
 import '../../../../shared/mock/ui_models.dart';
@@ -296,7 +298,7 @@ class _CuratorDashboardPageState extends State<CuratorDashboardPage> {
                                                               talk.title,
                                                               style: Theme.of(context)
                                                                   .textTheme
-                                                                  .bodyMedium
+                                                                      .bodyMedium
                                                                   ?.copyWith(
                                                                     fontWeight:
                                                                         FontWeight.w600,
@@ -347,7 +349,7 @@ class _CuratorDashboardPageState extends State<CuratorDashboardPage> {
                                           ),
                                           const SizedBox(width: 8),
                                           TextButton.icon(
-                                            onPressed: () => _showInviteSpeakerDialog(context),
+                                            onPressed: () => _showAssignSpeakerDialog(context),
                                             icon: const Icon(Icons.person_add_alt_1_outlined),
                                             label: const Text('Назначить спикера'),
                                           ),
@@ -373,44 +375,55 @@ class _CuratorDashboardPageState extends State<CuratorDashboardPage> {
     );
   }
 
-  void _showInviteSpeakerDialog(BuildContext context) {
+  void _showAssignSpeakerDialog(BuildContext context) {
     if (_eventId == null) return;
-    final emailController = TextEditingController();
+    
+    // Загружаем список участников мероприятия
+    context.read<EventBloc>().add(LoadEventParticipants(_eventId!, role: UserRole.participant));
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Назначить спикера'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: emailController,
-              decoration: const InputDecoration(
-                labelText: 'Email спикера',
-                hintText: 'example@mail.com',
-                prefixIcon: Icon(Icons.email_outlined),
+      builder: (context) => BlocBuilder<EventBloc, EventState>(
+        builder: (context, state) {
+          Profile? selectedProfile;
+
+          return AlertDialog(
+            title: const Text('Назначить спикера'),
+            content: state is EventLoading
+                ? const SizedBox(height: 100, child: Center(child: CircularProgressIndicator()))
+                : state is EventParticipantsLoaded
+                    ? (state.participants.isEmpty
+                        ? const Text('Нет доступных участников для назначения')
+                        : StatefulBuilder(
+                            builder: (context, setDialogState) => DropdownButtonFormField<Profile>(
+                              hint: const Text('Выберите из списка'),
+                              items: state.participants.map((p) => DropdownMenuItem(
+                                value: p,
+                                child: Text(p.fullName),
+                              )).toList(),
+                              onChanged: (val) => setDialogState(() => selectedProfile = val),
+                              decoration: const InputDecoration(labelText: 'Участник'),
+                            ),
+                          ))
+                    : const Text('Ошибка загрузки участников'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
+              ElevatedButton(
+                onPressed: () {
+                  if (selectedProfile != null) {
+                    context.read<EventBloc>().add(AssignRoleRequested(
+                      eventId: _eventId!,
+                      email: selectedProfile!.email,
+                      role: UserRole.speaker,
+                    ));
+                    Navigator.pop(context);
+                  }
+                },
+                child: const Text('Назначить'),
               ),
-              keyboardType: TextInputType.emailAddress,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
-          ElevatedButton(
-            onPressed: () {
-              if (emailController.text.isNotEmpty) {
-                context.read<EventBloc>().add(AssignRoleRequested(
-                  eventId: _eventId!,
-                  email: emailController.text.trim(),
-                  role: UserRole.speaker,
-                ));
-                Navigator.pop(context);
-              }
-            },
-            child: const Text('Назначить'),
-          ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }

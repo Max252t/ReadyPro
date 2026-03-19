@@ -5,25 +5,25 @@ import '../../../../../app/widgets/theme_toggle_button.dart';
 import '../../../../../blocs/auth/auth_bloc.dart';
 import '../../../../../blocs/auth/auth_event.dart';
 import '../../../../../blocs/auth/auth_state.dart';
-import '../../../../../blocs/event/event_bloc.dart';
-import '../../../../../blocs/event/event_event.dart';
 import '../../../../shared/presentation/widgets/login_card.dart';
 
-class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+class RegisterPage extends StatefulWidget {
+  const RegisterPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  State<RegisterPage> createState() => _RegisterPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _RegisterPageState extends State<RegisterPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _nameController = TextEditingController();
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _nameController.dispose();
     super.dispose();
   }
 
@@ -32,7 +32,6 @@ class _LoginPageState extends State<LoginPage> {
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state is AuthAuthenticated) {
-          context.read<EventBloc>().add(LoadMyEvents(state.user.id));
           Navigator.pushReplacementNamed(context, AppRoutes.participantProgram);
         } else if (state is AuthFailure) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -51,23 +50,22 @@ class _LoginPageState extends State<LoginPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      'ReadyPro',
+                      'Регистрация',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                             fontWeight: FontWeight.w600,
                           ),
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Система управления мероприятиями',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurface.withValues(
-                                  alpha: 0.65,
-                                ),
-                          ),
-                    ),
                     const SizedBox(height: 20),
+                    const Text('ФИО'),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: _nameController,
+                      decoration: const InputDecoration(
+                        hintText: 'Имя Фамилия',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     const Text('Email'),
                     const SizedBox(height: 6),
                     TextField(
@@ -84,10 +82,10 @@ class _LoginPageState extends State<LoginPage> {
                       controller: _passwordController,
                       obscureText: true,
                       decoration: const InputDecoration(
-                        hintText: 'ваш пароль',
+                        hintText: '••••••••',
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 24),
                     BlocBuilder<AuthBloc, AuthState>(
                       builder: (context, state) {
                         if (state is AuthLoading) {
@@ -95,21 +93,28 @@ class _LoginPageState extends State<LoginPage> {
                         }
                         return FilledButton(
                           onPressed: () {
+                            if (_emailController.text.isEmpty || _passwordController.text.isEmpty || _nameController.text.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Заполните все поля')),
+                              );
+                              return;
+                            }
                             context.read<AuthBloc>().add(
-                                  AuthSignInRequested(
+                                  AuthSignUpRequested(
                                     _emailController.text.trim(),
                                     _passwordController.text.trim(),
+                                    _nameController.text.trim(),
                                   ),
                                 );
                           },
-                          child: const Text('Войти'),
+                          child: const Text('Зарегистрироваться'),
                         );
                       },
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     TextButton(
-                      onPressed: () => Navigator.pushNamed(context, AppRoutes.register),
-                      child: const Text('Нет аккаунта? Зарегистрироваться'),
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Уже есть аккаунт? Войти'),
                     ),
                   ],
                 ),

@@ -13,4 +13,7 @@ abstract class AuthRepository {
   
   // Метод для обновления аватара (dynamic для поддержки File и XFile)
   Future<String?> updateAvatar(dynamic imageFile);
+
+  // Метод для обновления данных профиля
+  Future<void> updateProfile({required String fullName, String? company});
 }

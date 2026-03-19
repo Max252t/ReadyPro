@@ -41,6 +41,52 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  Future<void> _pickAvatar() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    if (pickedFile != null) {
+      if (mounted) {
+        context.read<AuthBloc>().add(AuthAvatarUpdateRequested(File(pickedFile.path)));
+      }
+    }
+  }
+
+  Future<void> _showEditProfileDialog() async {
+    final authState = context.read<AuthBloc>().state;
+    if (authState is! AuthAuthenticated) return;
+
+    final nameController = TextEditingController(text: authState.user.fullName);
+    final companyController = TextEditingController(text: authState.user.company);
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Редактировать профиль'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: nameController, decoration: const InputDecoration(labelText: 'ФИО')),
+            const SizedBox(height: 8),
+            TextField(controller: companyController, decoration: const InputDecoration(labelText: 'Компания')),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
+          ElevatedButton(
+            onPressed: () {
+              context.read<AuthBloc>().add(AuthUpdateProfileRequested(
+                fullName: nameController.text.trim(),
+                company: companyController.text.trim(),
+              ));
+              Navigator.pop(context);
+            },
+            child: const Text('Сохранить'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _showCreateEventDialog() async {
     final titleController = TextEditingController();
     final descController = TextEditingController();
@@ -127,21 +173,16 @@ class _ProfilePageState extends State<ProfilePage> {
           role: widget.role,
           title: 'Профиль',
           child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
+                    const Expanded(
                       child: Text(
                         'Ваша информация и активность',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withValues(alpha: 0.6),
-                            ),
+                        style: TextStyle(fontSize: 14, color: Colors.grey),
                       ),
                     ),
                     const ThemeToggleButton(),
@@ -150,163 +191,110 @@ class _ProfilePageState extends State<ProfilePage> {
                 const SizedBox(height: 16),
                 Card(
                   child: Padding(
-                    padding: const EdgeInsets.all(18),
+                    padding: const EdgeInsets.all(16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Icon(Icons.account_circle_outlined, size: 22),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Основная информация',
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                            ),
+                            const Text('Основная информация', style: TextStyle(fontWeight: FontWeight.bold)),
+                            IconButton(onPressed: _showEditProfileDialog, icon: const Icon(Icons.edit, size: 20)),
                           ],
                         ),
-                        const Divider(height: 28),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            CircleAvatar(
-                              radius: 36,
-                              backgroundColor:
-                                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
-                              backgroundImage: profile.avatarUrl != null 
-                                ? NetworkImage(profile.avatarUrl!) 
-                                : null,
-                              child: profile.avatarUrl == null 
-                                ? Icon(
-                                    Icons.person,
-                                    size: 36,
-                                    color: Theme.of(context).colorScheme.primary,
-                                  )
-                                : null,
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    profile.fullName,
-                                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Row(
+                        const Divider(),
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final isSmall = constraints.maxWidth < 400;
+                            return Wrap(
+                              spacing: 16,
+                              runSpacing: 16,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                GestureDetector(
+                                  onTap: _pickAvatar,
+                                  child: Stack(
                                     children: [
-                                      Icon(Icons.mail_outline, size: 16, color: Theme.of(context).hintColor),
-                                      const SizedBox(width: 6),
-                                      Expanded(child: Text(profile.email)),
+                                      CircleAvatar(
+                                        radius: 40,
+                                        backgroundImage: profile.avatarUrl != null ? NetworkImage(profile.avatarUrl!) : null,
+                                        child: profile.avatarUrl == null ? const Icon(Icons.person, size: 40) : null,
+                                      ),
+                                      Positioned(
+                                        right: 0,
+                                        bottom: 0,
+                                        child: Container(
+                                          padding: const EdgeInsets.all(4),
+                                          decoration: BoxDecoration(color: Theme.of(context).primaryColor, shape: BoxShape.circle),
+                                          child: const Icon(Icons.camera_alt, size: 14, color: Colors.white),
+                                        ),
+                                      ),
                                     ],
                                   ),
-                                  if (profile.company != null && profile.company!.isNotEmpty) ...[
-                                    const SizedBox(height: 6),
-                                    Row(
-                                      children: [
-                                        Icon(Icons.work_outline, size: 16, color: Theme.of(context).hintColor),
-                                        const SizedBox(width: 6),
-                                        Expanded(child: Text(profile.company!)),
-                                      ],
-                                    ),
-                                  ],
-                                  const SizedBox(height: 8),
-                                  UiBadge(_roleLabelRu(widget.role), variant: UiBadgeVariant.secondary),
-                                ],
-                              ),
-                            ),
-                          ],
+                                ),
+                                SizedBox(
+                                  width: isSmall ? constraints.maxWidth : constraints.maxWidth - 100,
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(profile.fullName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
+                                      Text(profile.email, style: const TextStyle(color: Colors.grey), overflow: TextOverflow.ellipsis),
+                                      if (profile.company != null) Text(profile.company!, style: const TextStyle(color: Colors.grey), overflow: TextOverflow.ellipsis),
+                                      const SizedBox(height: 8),
+                                      UiBadge(_roleLabelRu(widget.role), variant: UiBadgeVariant.secondary),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
                         ),
                       ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Мои мероприятия',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    Row(
-                      children: [
-                        if (widget.role == UiRole.organizer)
-                          TextButton.icon(
-                            onPressed: _showCreateEventDialog,
-                            icon: const Icon(Icons.add),
-                            label: const Text('Создать'),
-                          ),
-                        IconButton(onPressed: _refresh, icon: const Icon(Icons.refresh)),
-                      ],
-                    ),
+                    const Text('Мои мероприятия', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    if (widget.role == UiRole.organizer)
+                      TextButton.icon(onPressed: _showCreateEventDialog, icon: const Icon(Icons.add), label: const Text('Создать')),
                   ],
                 ),
                 const SizedBox(height: 12),
                 BlocBuilder<EventBloc, EventState>(
                   builder: (context, state) {
-                    if (state is EventLoading) {
-                      return const Center(child: Padding(
-                        padding: EdgeInsets.all(20.0),
-                        child: CircularProgressIndicator(),
-                      ));
-                    }
+                    if (state is EventLoading) return const Center(child: CircularProgressIndicator());
                     if (state is EventsLoaded) {
-                      if (state.events.isEmpty) {
-                        return const Center(child: Text('Вы еще не участвуете в мероприятиях'));
-                      }
-                      return Column(
-                        children: state.events.map((e) => Card(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          child: ListTile(
-                            leading: Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
-                                color: Theme.of(context).colorScheme.primaryContainer,
-                              ),
-                              child: ClipRRect(
+                      if (state.events.isEmpty) return const Center(child: Text('Нет мероприятий'));
+                      return ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: state.events.length,
+                        itemBuilder: (context, index) {
+                          final e = state.events[index];
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: ListTile(
+                              leading: ClipRRect(
                                 borderRadius: BorderRadius.circular(8),
                                 child: e.imageUrl != null 
-                                  ? Image.network(e.imageUrl!, fit: BoxFit.cover)
-                                  : Image.asset('assets/images/event.png', fit: BoxFit.cover),
+                                  ? Image.network(e.imageUrl!, width: 40, height: 40, fit: BoxFit.cover)
+                                  : Image.asset('assets/images/event.png', width: 40, height: 40, fit: BoxFit.cover),
                               ),
+                              title: Text(e.title, overflow: TextOverflow.ellipsis),
+                              subtitle: Text(_userRoleLabelRu(e.role)),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () => _navigateToEvent(context, e.role, e.eventId),
                             ),
-                            title: Text(e.title),
-                            subtitle: Text('Роль: ${_userRoleLabelRu(e.role)}'),
-                            trailing: const Icon(Icons.chevron_right),
-                            onTap: () {
-                              _navigateToEvent(context, e.role, e.eventId);
-                            },
-                          ),
-                        )).toList(),
+                          );
+                        },
                       );
                     }
                     return const SizedBox.shrink();
                   },
                 ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      context.read<AuthBloc>().add(AuthSignOutRequested());
-                      Navigator.pushNamedAndRemoveUntil(
-                        context,
-                        AppRoutes.login,
-                        (_) => false,
-                      );
-                    },
-                    icon: const Icon(Icons.logout),
-                    label: const Text('Выйти'),
-                  ),
-                ),
-                const SizedBox(height: 32),
               ],
             ),
           ),

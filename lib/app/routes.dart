@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../ui_stub/features/auth/presentation/pages/login_page.dart';
+import '../ui_stub/features/auth/presentation/pages/register_page.dart';
 import '../ui_stub/features/profile/presentation/pages/profile_page.dart';
 import '../ui_stub/features/curator/presentation/pages/curator_dashboard_page.dart';
 import '../ui_stub/features/curator/presentation/pages/curator_reports_page.dart';
@@ -19,6 +20,7 @@ import '../ui/auth_test_screen.dart';
 
 class AppRoutes {
   static const login = '/login';
+  static const register = '/register';
   static const profile = '/profile';
   static const debug = '/debug';
 
@@ -40,6 +42,7 @@ class AppRoutes {
 
   static Map<String, WidgetBuilder> get map => {
         login: (_) => const LoginPage(),
+        register: (_) => const RegisterPage(),
         profile: (context) => ProfilePage(
               role: uiRoleFromArgs(ModalRoute.of(context)?.settings.arguments),
             ),

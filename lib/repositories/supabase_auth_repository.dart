@@ -51,7 +51,6 @@ class SupabaseAuthRepository implements AuthRepository {
       final fileName = '${user.id}/avatar_${DateTime.now().millisecondsSinceEpoch}.png';
 
       if (kIsWeb) {
-        // Логика для Web (XFile или байты)
         final bytes = await (imageFile as dynamic).readAsBytes();
         await _client.storage.from('profile').uploadBinary(
               fileName,
@@ -59,7 +58,6 @@ class SupabaseAuthRepository implements AuthRepository {
               fileOptions: const supabase.FileOptions(upsert: true, contentType: 'image/png'),
             );
       } else {
-        // Логика для Mobile (File)
         await _client.storage.from('profile').upload(
               fileName,
               imageFile as File,
@@ -68,13 +66,27 @@ class SupabaseAuthRepository implements AuthRepository {
       }
 
       final newUrl = _client.storage.from('profile').getPublicUrl(fileName);
-
-      // Обновляем URL в профиле
       await _client.from('profiles').update({'avatar_url': newUrl}).eq('id', user.id);
 
       return newUrl;
     } catch (e) {
       print('Update avatar error: $e');
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> updateProfile({required String fullName, String? company}) async {
+    try {
+      final user = _client.auth.currentUser;
+      if (user == null) throw AuthException('Пользователь не авторизован');
+
+      await _client.from('profiles').update({
+        'full_name': fullName,
+        'company': company,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', user.id);
+    } catch (e) {
       rethrow;
     }
   }
