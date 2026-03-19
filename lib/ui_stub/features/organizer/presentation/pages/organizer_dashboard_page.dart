@@ -368,7 +368,7 @@ class _OrganizerDashboardPageState extends State<OrganizerDashboardPage> {
                       OutlinedButton.icon(
                         onPressed: () => _showInviteDialog(context),
                         icon: const Icon(Icons.person_add_alt_1_outlined),
-                        label: const Text('Пригласить участника'),
+                        label: const Text('Назначить на должность'),
                       ),
                     ],
                   ),
@@ -386,30 +386,36 @@ class _OrganizerDashboardPageState extends State<OrganizerDashboardPage> {
   void _showInviteDialog(BuildContext context) {
     if (_eventId == null) return;
     final emailController = TextEditingController();
-    UserRole selectedRole = UserRole.participant;
+    UserRole selectedRole = UserRole.curator;
+    final roles = [UserRole.curator, UserRole.speaker];
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Пригласить по почте'),
+        title: const Text('Назначить на должность'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: emailController,
-              decoration: const InputDecoration(labelText: 'Email'),
+              decoration: const InputDecoration(
+                labelText: 'Email пользователя',
+                hintText: 'example@mail.com',
+                prefixIcon: Icon(Icons.email_outlined),
+              ),
+              keyboardType: TextInputType.emailAddress,
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<UserRole>(
               value: selectedRole,
-              items: UserRole.values.map((r) => DropdownMenuItem(
+              items: roles.map((r) => DropdownMenuItem(
                 value: r,
-                child: Text(r.name),
+                child: Text(_userRoleLabelRu(r)),
               )).toList(),
               onChanged: (val) {
                 if (val != null) selectedRole = val;
               },
-              decoration: const InputDecoration(labelText: 'Роль'),
+              decoration: const InputDecoration(labelText: 'Выберите должность'),
             ),
           ],
         ),
@@ -417,18 +423,29 @@ class _OrganizerDashboardPageState extends State<OrganizerDashboardPage> {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
           ElevatedButton(
             onPressed: () {
-              context.read<EventBloc>().add(AssignRoleRequested(
-                eventId: _eventId!,
-                email: emailController.text,
-                role: selectedRole,
-              ));
-              Navigator.pop(context);
+              if (emailController.text.isNotEmpty) {
+                context.read<EventBloc>().add(AssignRoleRequested(
+                  eventId: _eventId!,
+                  email: emailController.text.trim(),
+                  role: selectedRole,
+                ));
+                Navigator.pop(context);
+              }
             },
-            child: const Text('Пригласить'),
+            child: const Text('Назначить'),
           ),
         ],
       ),
     );
+  }
+}
+
+String _userRoleLabelRu(UserRole r) {
+  switch (r) {
+    case UserRole.organizer: return 'Организатор';
+    case UserRole.curator: return 'Куратор';
+    case UserRole.speaker: return 'Спикер';
+    case UserRole.participant: return 'Участник';
   }
 }
 

@@ -16,6 +16,13 @@ class LoadMyEvents extends EventEvent {
 
 class LoadAllEvents extends EventEvent {}
 
+class LoadEventById extends EventEvent {
+  final String eventId;
+  LoadEventById(this.eventId);
+  @override
+  List<Object?> get props => [eventId];
+}
+
 class LoadEventParticipants extends EventEvent {
   final String eventId;
   final UserRole? role;

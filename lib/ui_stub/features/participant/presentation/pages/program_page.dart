@@ -162,20 +162,33 @@ class _ProgramPageState extends State<ProgramPage> with SingleTickerProviderStat
           return Card(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             child: ListTile(
-              title: Text(event.title),
-              subtitle: Text(event.description ?? 'Нет описания'),
-              trailing: ElevatedButton(
-                onPressed: () {
-                  final authState = context.read<AuthBloc>().state;
-                  if (authState is AuthAuthenticated) {
-                    context.read<EventBloc>().add(JoinEventRequested(
-                      eventId: event.id,
-                      userId: authState.user.id,
-                    ));
-                  }
-                },
-                child: const Text('Участвовать'),
+              onTap: () {
+                Navigator.pushNamed(
+                  context,
+                  AppRoutes.eventDetails,
+                  arguments: {'eventId': event.id},
+                );
+              },
+              leading: Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  image: DecorationImage(
+                    image: event.imageUrl != null 
+                      ? NetworkImage(event.imageUrl!) 
+                      : const AssetImage('assets/images/event.png') as ImageProvider,
+                    fit: BoxFit.cover,
+                  ),
+                ),
               ),
+              title: Text(event.title),
+              subtitle: Text(
+                event.description ?? 'Нет описания',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              trailing: const Icon(Icons.chevron_right),
             ),
           );
         },

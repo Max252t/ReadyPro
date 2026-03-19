@@ -12,6 +12,7 @@ import '../ui_stub/features/participant/presentation/pages/program_page.dart';
 import '../ui_stub/features/participant/presentation/pages/my_schedule_page.dart';
 import '../ui_stub/features/speaker/presentation/pages/speaker_talks_page.dart';
 import '../ui_stub/features/talk/presentation/pages/talk_details_page.dart';
+import '../ui_stub/features/participant/presentation/pages/event_details_page.dart';
 import '../ui_stub/shared/mock/ui_models.dart';
 import '../ui_stub/shared/route_args.dart';
 import '../ui/auth_test_screen.dart';
@@ -35,6 +36,7 @@ class AppRoutes {
   static const speakerTalks = '/speaker/talks';
 
   static const talkDetails = '/talk/details';
+  static const eventDetails = '/event/details';
 
   static Map<String, WidgetBuilder> get map => {
         login: (_) => const LoginPage(),
@@ -63,6 +65,9 @@ class AppRoutes {
         talkDetails: (context) => TalkDetailsPage(
               role: uiRoleFromArgs(ModalRoute.of(context)?.settings.arguments),
               talkId: talkIdFromArgs(ModalRoute.of(context)?.settings.arguments) ?? '',
+            ),
+        eventDetails: (context) => EventDetailsPage(
+              eventId: eventIdFromArgs(ModalRoute.of(context)?.settings.arguments) ?? '',
             ),
       };
 }

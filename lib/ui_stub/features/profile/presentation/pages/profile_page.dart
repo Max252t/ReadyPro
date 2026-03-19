@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:ready_pro/blocs/auth/auth_bloc.dart';
 import 'package:ready_pro/blocs/auth/auth_event.dart';
 import 'package:ready_pro/blocs/auth/auth_state.dart';
@@ -41,37 +44,71 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _showCreateEventDialog() async {
     final titleController = TextEditingController();
     final descController = TextEditingController();
+    File? selectedImage;
+    
     final authState = context.read<AuthBloc>().state;
     if (authState is! AuthAuthenticated) return;
 
     await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Создать мероприятие'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Название')),
-            TextField(controller: descController, decoration: const InputDecoration(labelText: 'Описание')),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Создать мероприятие'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                GestureDetector(
+                  onTap: () async {
+                    final picker = ImagePicker();
+                    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+                    if (pickedFile != null) {
+                      setDialogState(() {
+                        selectedImage = File(pickedFile.path);
+                      });
+                    }
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(12),
+                      image: selectedImage != null 
+                        ? DecorationImage(image: FileImage(selectedImage!), fit: BoxFit.cover)
+                        : const DecorationImage(image: AssetImage('assets/images/event.png'), fit: BoxFit.cover),
+                    ),
+                    child: selectedImage == null 
+                      ? const Center(child: Icon(Icons.add_a_photo, size: 32, color: Colors.grey))
+                      : null,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Название')),
+                TextField(controller: descController, decoration: const InputDecoration(labelText: 'Описание')),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
+            ElevatedButton(
+              onPressed: () {
+                if (titleController.text.isEmpty) return;
+                
+                final newEvent = Event(
+                  id: '',
+                  title: titleController.text,
+                  description: descController.text,
+                  status: EventStatus.preparation,
+                  createdBy: authState.user.id,
+                );
+                context.read<EventBloc>().add(CreateEventRequested(newEvent, imageFile: selectedImage));
+                Navigator.pop(context);
+              },
+              child: const Text('Создать'),
+            ),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
-          ElevatedButton(
-            onPressed: () {
-              final newEvent = Event(
-                id: '',
-                title: titleController.text,
-                description: descController.text,
-                status: EventStatus.preparation,
-                createdBy: authState.user.id,
-              );
-              context.read<EventBloc>().add(CreateEventRequested(newEvent));
-              Navigator.pop(context);
-            },
-            child: const Text('Создать'),
-          ),
-        ],
       ),
     );
   }
@@ -233,9 +270,12 @@ class _ProfilePageState extends State<ProfilePage> {
                                 borderRadius: BorderRadius.circular(8),
                                 color: Theme.of(context).colorScheme.primaryContainer,
                               ),
-                              child: e.imageUrl != null 
-                                ? Image.network(e.imageUrl!, fit: BoxFit.cover)
-                                : const Icon(Icons.event),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: e.imageUrl != null 
+                                  ? Image.network(e.imageUrl!, fit: BoxFit.cover)
+                                  : Image.asset('assets/images/event.png', fit: BoxFit.cover),
+                              ),
                             ),
                             title: Text(e.title),
                             subtitle: Text('Роль: ${_userRoleLabelRu(e.role)}'),

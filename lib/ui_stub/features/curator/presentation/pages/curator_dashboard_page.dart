@@ -8,6 +8,8 @@ import 'package:ready_pro/blocs/curator/curator_state.dart';
 import 'package:ready_pro/blocs/organizer/organizer_bloc.dart';
 import 'package:ready_pro/blocs/organizer/organizer_event.dart';
 import 'package:ready_pro/blocs/organizer/organizer_state.dart';
+import 'package:ready_pro/blocs/event/event_bloc.dart';
+import 'package:ready_pro/blocs/event/event_event.dart';
 import 'package:ready_pro/core/enums.dart';
 
 import '../../../../../app/routes.dart';
@@ -86,129 +88,235 @@ class _CuratorDashboardPageState extends State<CuratorDashboardPage> {
                     : [];
                 final activeTasksCount = tasks.where((t) => !t.isCompleted).length;
 
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    LayoutBuilder(
-                      builder: (context, c) {
-                        final columns = c.maxWidth >= 900 ? 3 : 1;
-                        return GridView.count(
-                          crossAxisCount: columns,
-                          crossAxisSpacing: 16,
-                          mainAxisSpacing: 16,
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          children: [
-                            StatCard(
-                              title: 'Моя секция',
-                              value: section.name,
-                              icon: Icons.groups_outlined,
-                              subtitle: '${talks.length} докладов',
-                            ),
-                            StatCard(
-                              title: 'Задачи',
-                              value: '${tasks.length}',
-                              icon: Icons.checklist_outlined,
-                              subtitle: '$activeTasksCount активных',
-                            ),
-                            StatCard(
-                              title: 'Прогресс секции',
-                              value: '${section.progress}%',
-                              icon: Icons.trending_up,
-                              subtitle: 'текущее состояние',
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    LayoutBuilder(
-                      builder: (context, c) {
-                        final twoCols = c.maxWidth >= 900;
-                        return GridView.count(
-                          crossAxisCount: twoCols ? 2 : 1,
-                          crossAxisSpacing: 16,
-                          mainAxisSpacing: 16,
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          children: [
-                            Card(
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Мои задачи',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleMedium
-                                          ?.copyWith(fontWeight: FontWeight.w600),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    if (tasks.isEmpty)
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 24),
-                                        child: Text(
-                                          'Нет назначенных задач',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodyMedium
-                                              ?.copyWith(
-                                                color: Theme.of(context)
-                                                    .colorScheme
-                                                    .onSurface
-                                                    .withValues(alpha: 0.6),
-                                              ),
-                                        ),
-                                      )
-                                    else
-                                      for (final task in tasks)
+                return SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      LayoutBuilder(
+                        builder: (context, c) {
+                          final columns = c.maxWidth >= 900 ? 3 : 1;
+                          return GridView.count(
+                            crossAxisCount: columns,
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 16,
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            children: [
+                              StatCard(
+                                title: 'Моя секция',
+                                value: section.name,
+                                icon: Icons.groups_outlined,
+                                subtitle: '${talks.length} докладов',
+                              ),
+                              StatCard(
+                                title: 'Задачи',
+                                value: '${tasks.length}',
+                                icon: Icons.checklist_outlined,
+                                subtitle: '$activeTasksCount активных',
+                              ),
+                              StatCard(
+                                title: 'Прогресс секции',
+                                value: '${section.progress}%',
+                                icon: Icons.trending_up,
+                                subtitle: 'текущее состояние',
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      LayoutBuilder(
+                        builder: (context, c) {
+                          final twoCols = c.maxWidth >= 900;
+                          return GridView.count(
+                            crossAxisCount: twoCols ? 2 : 1,
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 16,
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            childAspectRatio: 1.2,
+                            children: [
+                              Card(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Мои задачи',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium
+                                            ?.copyWith(fontWeight: FontWeight.w600),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      if (tasks.isEmpty)
                                         Padding(
-                                          padding:
-                                              const EdgeInsets.symmetric(vertical: 6),
-                                          child: Row(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Padding(
-                                                padding: const EdgeInsets.only(top: 2),
-                                                child: Icon(
-                                                  task.isCompleted
-                                                      ? Icons.check_box
-                                                      : Icons.check_box_outline_blank,
-                                                  size: 18,
-                                                  color: task.isCompleted
-                                                      ? Theme.of(context)
-                                                          .colorScheme
-                                                          .primary
-                                                      : Theme.of(context)
-                                                          .colorScheme
-                                                          .onSurface
-                                                          .withValues(alpha: 0.45),
+                                          padding: const EdgeInsets.symmetric(vertical: 24),
+                                          child: Text(
+                                            'Нет назначенных задач',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodyMedium
+                                                ?.copyWith(
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurface
+                                                      .withValues(alpha: 0.6),
                                                 ),
-                                              ),
-                                              const SizedBox(width: 10),
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      task.title,
-                                                      style: Theme.of(context)
-                                                          .textTheme
-                                                          .bodyMedium
-                                                          ?.copyWith(
-                                                            fontWeight: FontWeight.w600,
-                                                            decoration: task.isCompleted
-                                                                ? TextDecoration
-                                                                    .lineThrough
-                                                                : null,
-                                                          ),
-                                                    ),
-                                                    if (task.description != null)
+                                          ),
+                                        )
+                                      else
+                                        for (final task in tasks)
+                                          Padding(
+                                            padding:
+                                                const EdgeInsets.symmetric(vertical: 6),
+                                            child: Row(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Padding(
+                                                  padding: const EdgeInsets.only(top: 2),
+                                                  child: Icon(
+                                                    task.isCompleted
+                                                        ? Icons.check_box
+                                                        : Icons.check_box_outline_blank,
+                                                    size: 18,
+                                                    color: task.isCompleted
+                                                        ? Theme.of(context)
+                                                            .colorScheme
+                                                            .primary
+                                                        : Theme.of(context)
+                                                            .colorScheme
+                                                            .onSurface
+                                                            .withValues(alpha: 0.45),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 10),
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment.start,
+                                                    children: [
                                                       Text(
-                                                        task.description!,
+                                                        task.title,
+                                                        style: Theme.of(context)
+                                                            .textTheme
+                                                            .bodyMedium
+                                                            ?.copyWith(
+                                                              fontWeight: FontWeight.w600,
+                                                              decoration: task.isCompleted
+                                                                  ? TextDecoration
+                                                                      .lineThrough
+                                                                  : null,
+                                                            ),
+                                                      ),
+                                                      if (task.description != null)
+                                                        Text(
+                                                          task.description!,
+                                                          style: Theme.of(context)
+                                                              .textTheme
+                                                              .bodySmall
+                                                              ?.copyWith(
+                                                                color: Theme.of(context)
+                                                                    .colorScheme
+                                                                    .onSurface
+                                                                    .withValues(alpha: 0.6),
+                                                              ),
+                                                        ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              Card(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Доклады моей секции',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium
+                                            ?.copyWith(fontWeight: FontWeight.w600),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      if (talks.isEmpty)
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(vertical: 24),
+                                          child: Text(
+                                            'Доклады не добавлены',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodyMedium
+                                                ?.copyWith(
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurface
+                                                      .withValues(alpha: 0.6),
+                                                ),
+                                          ),
+                                        )
+                                      else
+                                        for (final talk in talks)
+                                          Padding(
+                                            padding:
+                                                const EdgeInsets.symmetric(vertical: 8),
+                                            child: Row(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Container(
+                                                  width: 4,
+                                                  height: 34,
+                                                  decoration: BoxDecoration(
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .primary,
+                                                    borderRadius: BorderRadius.circular(4),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 10),
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment.start,
+                                                    children: [
+                                                      Row(
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment.start,
+                                                        children: [
+                                                          Expanded(
+                                                            child: Text(
+                                                              talk.title,
+                                                              style: Theme.of(context)
+                                                                  .textTheme
+                                                                  .bodyMedium
+                                                                  ?.copyWith(
+                                                                    fontWeight:
+                                                                        FontWeight.w600,
+                                                                  ),
+                                                            ),
+                                                          ),
+                                                          const SizedBox(width: 8),
+                                                          UiBadge(
+                                                            talk.status == TalkStatus.ready
+                                                                ? 'Готов'
+                                                                : 'Черновик',
+                                                            variant: talk.status == TalkStatus.ready
+                                                                ? UiBadgeVariant.defaultFill
+                                                                : UiBadgeVariant.secondary,
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      const SizedBox(height: 2),
+                                                      Text(
+                                                        '${section.name} • ${talk.startTime != null ? _formatTime(talk.startTime!) : 'Время не указано'}',
                                                         style: Theme.of(context)
                                                             .textTheme
                                                             .bodySmall
@@ -219,144 +327,90 @@ class _CuratorDashboardPageState extends State<CuratorDashboardPage> {
                                                                   .withValues(alpha: 0.6),
                                                             ),
                                                       ),
-                                                  ],
+                                                    ],
+                                                  ),
                                                 ),
-                                              ),
-                                            ],
+                                              ],
+                                            ),
                                           ),
-                                        ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            Card(
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Доклады моей секции',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleMedium
-                                          ?.copyWith(fontWeight: FontWeight.w600),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    if (talks.isEmpty)
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 24),
-                                        child: Text(
-                                          'Доклады не добавлены',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodyMedium
-                                              ?.copyWith(
-                                                color: Theme.of(context)
-                                                    .colorScheme
-                                                    .onSurface
-                                                    .withValues(alpha: 0.6),
-                                              ),
-                                        ),
-                                      )
-                                    else
-                                      for (final talk in talks)
-                                        Padding(
-                                          padding:
-                                              const EdgeInsets.symmetric(vertical: 8),
-                                          child: Row(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Container(
-                                                width: 4,
-                                                height: 34,
-                                                decoration: BoxDecoration(
-                                                  color: Theme.of(context)
-                                                      .colorScheme
-                                                      .primary,
-                                                  borderRadius: BorderRadius.circular(4),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 10),
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    Row(
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment.start,
-                                                      children: [
-                                                        Expanded(
-                                                          child: Text(
-                                                            talk.title,
-                                                            style: Theme.of(context)
-                                                                .textTheme
-                                                                .bodyMedium
-                                                                ?.copyWith(
-                                                                  fontWeight:
-                                                                      FontWeight.w600,
-                                                                ),
-                                                          ),
-                                                        ),
-                                                        const SizedBox(width: 8),
-                                                        UiBadge(
-                                                          talk.status == TalkStatus.ready
-                                                              ? 'Готов'
-                                                              : 'Черновик',
-                                                          variant: talk.status == TalkStatus.ready
-                                                              ? UiBadgeVariant.defaultFill
-                                                              : UiBadgeVariant.secondary,
-                                                        ),
-                                                      ],
-                                                    ),
-                                                    const SizedBox(height: 2),
-                                                    Text(
-                                                      '${section.name} • ${talk.startTime != null ? _formatTime(talk.startTime!) : 'Время не указано'}',
-                                                      style: Theme.of(context)
-                                                          .textTheme
-                                                          .bodySmall
-                                                          ?.copyWith(
-                                                            color: Theme.of(context)
-                                                                .colorScheme
-                                                                .onSurface
-                                                                .withValues(alpha: 0.6),
-                                                          ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ],
+                                      const Spacer(),
+                                      Row(
+                                        children: [
+                                          OutlinedButton.icon(
+                                            onPressed: () => Navigator.pushReplacementNamed(
+                                              context,
+                                              AppRoutes.curatorReports,
+                                              arguments: {'role': UiRole.curator, 'eventId': _eventId},
+                                            ),
+                                            icon: const Icon(Icons.description_outlined),
+                                            label: const Text('Отчёты'),
                                           ),
-                                        ),
-                                    const SizedBox(height: 8),
-                                    Align(
-                                      alignment: Alignment.centerLeft,
-                                      child: OutlinedButton.icon(
-                                        onPressed: () => Navigator.pushReplacementNamed(
-                                          context,
-                                          AppRoutes.curatorReports,
-                                          arguments: {'role': UiRole.curator, 'eventId': _eventId},
-                                        ),
-                                        icon: const Icon(Icons.description_outlined),
-                                        label: const Text('Перейти к отчётам'),
+                                          const SizedBox(width: 8),
+                                          TextButton.icon(
+                                            onPressed: () => _showInviteSpeakerDialog(context),
+                                            icon: const Icon(Icons.person_add_alt_1_outlined),
+                                            label: const Text('Назначить спикера'),
+                                          ),
+                                        ],
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ],
+                            ],
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 );
               }
               return const Center(child: Text('Данные не найдены'));
             },
           );
         },
+      ),
+    );
+  }
+
+  void _showInviteSpeakerDialog(BuildContext context) {
+    if (_eventId == null) return;
+    final emailController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Назначить спикера'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: emailController,
+              decoration: const InputDecoration(
+                labelText: 'Email спикера',
+                hintText: 'example@mail.com',
+                prefixIcon: Icon(Icons.email_outlined),
+              ),
+              keyboardType: TextInputType.emailAddress,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
+          ElevatedButton(
+            onPressed: () {
+              if (emailController.text.isNotEmpty) {
+                context.read<EventBloc>().add(AssignRoleRequested(
+                  eventId: _eventId!,
+                  email: emailController.text.trim(),
+                  role: UserRole.speaker,
+                ));
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Назначить'),
+          ),
+        ],
       ),
     );
   }

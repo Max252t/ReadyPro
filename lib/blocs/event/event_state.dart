@@ -26,6 +26,13 @@ class AllEventsLoaded extends EventState {
   List<Object?> get props => [events];
 }
 
+class SingleEventLoaded extends EventState {
+  final Event event;
+  SingleEventLoaded(this.event);
+  @override
+  List<Object?> get props => [event];
+}
+
 class EventParticipantsLoaded extends EventState {
   final List<Profile> participants;
   EventParticipantsLoaded(this.participants);
