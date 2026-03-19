@@ -8,7 +8,6 @@ import 'package:ready_pro/models/user.dart';
 
 import '../../../../app/routes.dart';
 import '../../../../app/widgets/theme_toggle_button.dart';
-import '../../mock/ui_mock_data.dart';
 import '../../mock/ui_models.dart';
 import '../../route_args.dart';
 
@@ -40,6 +39,8 @@ class RootShell extends StatelessWidget {
     final currentArgs = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     final eventId = eventIdFromArgs(currentArgs);
 
+    final canPop = Navigator.canPop(context);
+
     final nav = _NavContent(
       user: user,
       links: navLinks,
@@ -59,6 +60,7 @@ class RootShell extends StatelessWidget {
         AppRoutes.profile,
         arguments: {'role': role},
       ),
+      onGoHome: () => AppRoutes.navigateToRoleHome(context, role, eventId: eventId),
       onLogout: () => context.read<AuthBloc>().add(AuthSignOutRequested()),
     );
 
@@ -66,10 +68,33 @@ class RootShell extends StatelessWidget {
       appBar: isDesktop
           ? null
           : AppBar(
+              leading: canPop
+                  ? IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: () => Navigator.maybePop(context),
+                    )
+                  : null,
+              automaticallyImplyLeading: !canPop,
               title: const Text('ReadyPro'),
               actions: [
+                if (canPop)
+                  Builder(
+                    builder: (ctx) => IconButton(
+                      icon: const Icon(Icons.menu),
+                      tooltip: 'Меню',
+                      onPressed: () => Scaffold.of(ctx).openDrawer(),
+                    ),
+                  ),
+                IconButton(
+                  icon: const Icon(Icons.home_outlined),
+                  tooltip: 'На главную',
+                  onPressed: () => AppRoutes.navigateToRoleHome(
+                    context,
+                    role,
+                    eventId: eventId,
+                  ),
+                ),
                 if (actions != null) ...actions!,
-                // const ThemeToggleButton(), // Убрано по просьбе пользователя
                 const SizedBox(width: 4),
               ],
             ),
@@ -170,6 +195,7 @@ class _NavContent extends StatelessWidget {
   final String selectedRouteName;
   final _Navigate onNavigate;
   final VoidCallback onOpenProfile;
+  final VoidCallback onGoHome;
   final VoidCallback onLogout;
 
   const _NavContent({
@@ -178,6 +204,7 @@ class _NavContent extends StatelessWidget {
     required this.selectedRouteName,
     required this.onNavigate,
     required this.onOpenProfile,
+    required this.onGoHome,
     required this.onLogout,
   });
 
@@ -190,11 +217,22 @@ class _NavContent extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'ReadyPro',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'ReadyPro',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
                     ),
+                  ),
+                  IconButton(
+                    onPressed: onGoHome,
+                    icon: const Icon(Icons.home_outlined),
+                    tooltip: 'На главную',
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
               Row(

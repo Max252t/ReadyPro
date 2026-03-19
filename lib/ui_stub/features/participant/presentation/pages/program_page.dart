@@ -166,7 +166,7 @@ class _ProgramPageState extends State<ProgramPage> with SingleTickerProviderStat
                 Navigator.pushNamed(
                   context,
                   AppRoutes.eventDetails,
-                  arguments: {'eventId': event.id},
+                  arguments: {'eventId': event.id, 'role': widget.role},
                 );
               },
               leading: Container(

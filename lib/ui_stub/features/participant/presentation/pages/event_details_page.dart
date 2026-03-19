@@ -1,17 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:ready_pro/app/routes.dart';
 import 'package:ready_pro/blocs/auth/auth_bloc.dart';
 import 'package:ready_pro/blocs/auth/auth_state.dart';
 import 'package:ready_pro/blocs/event/event_bloc.dart';
 import 'package:ready_pro/blocs/event/event_event.dart';
-import 'package:ready_pro/blocs/event/event_state.dart';
 import 'package:ready_pro/models/event.dart';
-import 'package:ready_pro/core/enums.dart';
+
+import '../../../../shared/mock/ui_models.dart';
 
 class EventDetailsPage extends StatefulWidget {
   final String eventId;
+  final UiRole role;
 
-  const EventDetailsPage({super.key, required this.eventId});
+  const EventDetailsPage({
+    super.key,
+    required this.eventId,
+    this.role = UiRole.participant,
+  });
 
   @override
   State<EventDetailsPage> createState() => _EventDetailsPageState();
@@ -48,20 +54,45 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
     }
   }
 
+  PreferredSizeWidget _buildAppBar(BuildContext context, {String? title}) {
+    final canPop = Navigator.canPop(context);
+    return AppBar(
+      title: Text(title ?? 'Мероприятие'),
+      leading: canPop
+          ? IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => Navigator.maybePop(context),
+            )
+          : null,
+      automaticallyImplyLeading: false,
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.home_outlined),
+          tooltip: 'На главную',
+          onPressed: () => AppRoutes.navigateToRoleHome(context, widget.role),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        appBar: _buildAppBar(context),
+        body: const Center(child: CircularProgressIndicator()),
+      );
     }
 
     if (_event == null) {
-      return const Scaffold(body: Center(child: Text('Мероприятие не найдено')));
+      return Scaffold(
+        appBar: _buildAppBar(context),
+        body: const Center(child: Text('Мероприятие не найдено')),
+      );
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_event!.title),
-      ),
+      appBar: _buildAppBar(context, title: _event!.title),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -136,12 +167,3 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
     );
   }
 }
-
-// Note: I need to add getEventById to EventBloc or just call repository directly if possible.
-// Better to add it to EventBloc state or just use repository via context if registered.
-extension EventBlocHelper on BuildContext {
-  // Simple helper to get event from repository
-  // In a real BLoC pattern, this should be an event/state
-}
-
-// I will add a method to EventBloc to fetch a single event or just use the repository.
