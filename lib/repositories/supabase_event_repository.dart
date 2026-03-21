@@ -215,7 +215,7 @@ class SupabaseEventRepository implements EventRepository {
 
   @override
   Future<List<Profile>> getEventParticipants(String eventId, {UserRole? role}) async {
-    var query = _client.from('event_participants').select('profiles(*)').eq('event_id', eventId);
+    var query = _client.from('event_participants').select('role, profiles(*)').eq('event_id', eventId);
     
     if (role != null) {
       query = query.eq('role', role.name);
@@ -223,7 +223,23 @@ class SupabaseEventRepository implements EventRepository {
     
     final response = await query;
     final List<dynamic> data = response as List<dynamic>;
-    return data.map((item) => Profile.fromJson(item['profiles'])).toList();
+    
+    final participants = data.map((item) {
+      final profile = Profile.fromJson(item['profiles']);
+      return profile.copyWith(role: UserRole.fromString(item['role']));
+    }).toList();
+
+    // Генерация подписанных ссылок для аватаров
+    return await Future.wait(participants.map((p) async {
+      if (p.avatarUrl == null || p.avatarUrl!.isEmpty) return p;
+      
+      final signedUrl = await _maybeCreateSignedImageUrl(
+        imageUrl: p.avatarUrl,
+        bucket: 'profile',
+      );
+      
+      return p.copyWith(avatarUrl: signedUrl);
+    }));
   }
 
   @override
