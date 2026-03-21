@@ -310,8 +310,6 @@ class _ProfilePageState extends State<ProfilePage> {
                                       Text(profile.fullName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
                                       Text(profile.email, style: const TextStyle(color: Colors.grey), overflow: TextOverflow.ellipsis),
                                       if (profile.company != null) Text(profile.company!, style: const TextStyle(color: Colors.grey), overflow: TextOverflow.ellipsis),
-                                      const SizedBox(height: 8),
-                                      UiBadge(_roleLabelRu(widget.role), variant: UiBadgeVariant.secondary),
                                     ],
                                   ),
                                 ),

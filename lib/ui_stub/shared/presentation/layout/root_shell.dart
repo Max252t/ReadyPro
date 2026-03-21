@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:ready_pro/app/layout/app_breakpoints.dart';
 import 'package:ready_pro/blocs/auth/auth_bloc.dart';
 import 'package:ready_pro/blocs/auth/auth_event.dart';
 import 'package:ready_pro/blocs/auth/auth_state.dart';
@@ -10,6 +9,8 @@ import '../../../../app/routes.dart';
 import '../../../../app/widgets/theme_toggle_button.dart';
 import '../../mock/ui_models.dart';
 import '../../route_args.dart';
+
+typedef _Navigate = void Function(String routeName, {Map<String, dynamic>? extraArgs});
 
 class RootShell extends StatelessWidget {
   final UiRole role;
@@ -28,8 +29,6 @@ class RootShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authState = context.watch<AuthBloc>().state;
-    // Если пользователь уже разлогинен, показывать спиннер бессмысленно:
-    // навигация на `login` должна сработать на уровне `App`.
     if (authState is AuthUnauthenticated) return const SizedBox.shrink();
     if (authState is! AuthAuthenticated) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -38,161 +37,157 @@ class RootShell extends StatelessWidget {
     final user = authState.user;
     final navLinks = _navLinksForRole(role);
     final routeName = ModalRoute.of(context)?.settings.name ?? '';
-    final isDesktop = AppBreakpoints.isExpanded(context);
 
-    // Сохраняем eventId при навигации
     final currentArgs = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     final eventId = eventIdFromArgs(currentArgs);
 
-    final canPop = Navigator.canPop(context);
+    final eventLinks = navLinks.where((l) => l.isEventSpecific).toList();
+    final globalLinks = navLinks.where((l) => !l.isEventSpecific).toList();
+
+    final hasEvent = eventId != null && eventId.isNotEmpty;
+    final isEventSpecificRoute = eventLinks.any((l) => l.routeName == routeName);
+    
+    // TabBar показываем ТОЛЬКО если: есть мероприятие И мы на событийном экране
+    final showTabBar = hasEvent && isEventSpecificRoute && eventLinks.isNotEmpty;
 
     final nav = _NavContent(
       user: user,
-      links: navLinks,
+      links: globalLinks,
       selectedRouteName: routeName,
-      onNavigate: (route) {
+      onNavigate: (route, {extraArgs}) {
         final Map<String, dynamic> nextArgs = {'role': role};
         if (eventId != null) nextArgs['eventId'] = eventId;
+        if (extraArgs != null) nextArgs.addAll(extraArgs);
         
-        Navigator.pushReplacementNamed(
-          context,
-          route,
-          arguments: nextArgs,
-        );
+        Navigator.pushReplacementNamed(context, route, arguments: nextArgs);
       },
       onOpenProfile: () => Navigator.pushReplacementNamed(
         context,
         AppRoutes.profile,
-        arguments: {'role': role},
+        arguments: {'role': role, if (eventId != null) 'eventId': eventId},
       ),
-      onGoHome: () => AppRoutes.navigateToRoleHome(context, role, eventId: eventId),
       onLogout: () => context.read<AuthBloc>().add(AuthSignOutRequested()),
     );
 
     return Scaffold(
-      appBar: isDesktop
-          ? null
-          : AppBar(
-              leading: canPop
-                  ? IconButton(
-                      icon: const Icon(Icons.arrow_back),
-                      onPressed: () => Navigator.maybePop(context),
-                    )
-                  : null,
-              automaticallyImplyLeading: !canPop,
-              title: const Text('ReadyPro'),
-              actions: [
-                if (canPop)
-                  Builder(
-                    builder: (ctx) => IconButton(
-                      icon: const Icon(Icons.menu),
-                      tooltip: 'Меню',
-                      onPressed: () => Scaffold.of(ctx).openDrawer(),
-                    ),
-                  ),
-                IconButton(
-                  icon: const Icon(Icons.home_outlined),
-                  tooltip: 'На главную',
-                  onPressed: () => AppRoutes.navigateToRoleHome(
-                    context,
-                    role,
-                    eventId: eventId,
-                  ),
-                ),
-                if (actions != null) ...actions!,
-                const SizedBox(width: 4),
-              ],
-            ),
-      drawer: isDesktop ? null : Drawer(child: nav),
+      appBar: AppBar(
+        // Если показываем TabBar, то заголовок - название экрана, иначе общее название
+        title: Text(showTabBar ? title : (title.isNotEmpty ? title : 'ReadyPro')),
+        actions: [
+          if (actions != null) ...actions!,
+          const SizedBox(width: 8),
+        ],
+        bottom: showTabBar 
+          ? TabBarWidget(
+              links: eventLinks,
+              selectedRouteName: routeName,
+              onTap: (route) {
+                Navigator.pushReplacementNamed(
+                  context,
+                  route,
+                  arguments: {'role': role, 'eventId': eventId},
+                );
+              },
+            )
+          : null,
+      ),
+      drawer: Drawer(child: nav),
       body: SafeArea(
-        child: Row(
-          children: [
-            if (isDesktop)
-              SizedBox(
-                width: 280,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    border: Border(
-                      right: BorderSide(
-                        color: Theme.of(context).dividerColor,
-                      ),
-                    ),
-                  ),
-                  child: nav,
-                ),
-              ),
-            Expanded(
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(
-                  isDesktop ? 32 : 16,
-                  16,
-                  isDesktop ? 32 : 16,
-                  24,
-                ),
-                child: _PageFrame(
-                  title: title,
-                  actions: actions,
-                  child: child,
-                ),
-              ),
-            ),
-          ],
+        child: _PageFrame(
+          child: (isEventSpecificRoute && !hasEvent) 
+            ? _buildNoEventStub(context) 
+            : child,
         ),
+      ),
+    );
+  }
+
+  Widget _buildNoEventStub(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.event_note, size: 64, color: Colors.grey),
+          const SizedBox(height: 16),
+          const Text('Мероприятие не выбрано', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          const Text('Выберите мероприятие из списка, чтобы продолжить', textAlign: TextAlign.center),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: () => Navigator.pushReplacementNamed(
+              context, 
+              AppRoutes.allEvents, 
+              arguments: {'role': role},
+            ),
+            child: const Text('Перейти к списку мероприятий'),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _PageFrame extends StatelessWidget {
-  final String title;
-  final Widget child;
-  final List<Widget>? actions;
+class TabBarWidget extends StatelessWidget implements PreferredSizeWidget {
+  final List<_NavLink> links;
+  final String selectedRouteName;
+  final Function(String) onTap;
 
-  const _PageFrame({required this.title, required this.child, this.actions});
+  const TabBarWidget({super.key, required this.links, required this.selectedRouteName, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    // Используем Column вместо ListView, чтобы избежать конфликтов скролла внутри страниц
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                title,
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
+    return Container(
+      width: double.infinity,
+      color: Theme.of(context).appBarTheme.backgroundColor,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: links.map((link) {
+            final isSelected = selectedRouteName == link.routeName;
+            return InkWell(
+              onTap: () => onTap(link.routeName),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: isSelected ? Theme.of(context).primaryColor : Colors.transparent,
+                      width: 3,
                     ),
-              ),
-            ),
-            if (actions != null) ...actions!,
-          ],
-        ),
-        const SizedBox(height: 20),
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final w = constraints.maxWidth < AppBreakpoints.contentMaxWidth
-                  ? constraints.maxWidth
-                  : AppBreakpoints.contentMaxWidth;
-              return Align(
-                alignment: Alignment.topCenter,
-                child: SizedBox(
-                  width: w,
-                  height: constraints.maxHeight,
-                  child: child,
+                  ),
                 ),
-              );
-            },
-          ),
+                child: Text(
+                  link.label,
+                  style: TextStyle(
+                    color: isSelected ? Theme.of(context).primaryColor : null,
+                    fontWeight: isSelected ? FontWeight.bold : null,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
         ),
-      ],
+      ),
+    );
+  }
+
+  @override
+  Size get preferredSize => const Size.fromHeight(48);
+}
+
+class _PageFrame extends StatelessWidget {
+  final Widget child;
+
+  const _PageFrame({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: child,
     );
   }
 }
-
-typedef _Navigate = void Function(String routeName);
 
 class _NavContent extends StatelessWidget {
   final Profile user;
@@ -200,7 +195,6 @@ class _NavContent extends StatelessWidget {
   final String selectedRouteName;
   final _Navigate onNavigate;
   final VoidCallback onOpenProfile;
-  final VoidCallback onGoHome;
   final VoidCallback onLogout;
 
   const _NavContent({
@@ -209,7 +203,6 @@ class _NavContent extends StatelessWidget {
     required this.selectedRouteName,
     required this.onNavigate,
     required this.onOpenProfile,
-    required this.onGoHome,
     required this.onLogout,
   });
 
@@ -217,190 +210,50 @@ class _NavContent extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'ReadyPro',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: onGoHome,
-                    icon: const Icon(Icons.home_outlined),
-                    tooltip: 'На главную',
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: 18,
-                    backgroundColor:
-                        Theme.of(context).colorScheme.primary.withValues(
-                              alpha: 0.12,
-                            ),
-                    child: (user.avatarUrl != null && user.avatarUrl!.isNotEmpty)
-                        ? ClipOval(
-                            child: Image.network(
-                              user.avatarUrl!,
-                              width: 36,
-                              height: 36,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) {
-                                return const Icon(Icons.person, size: 18);
-                              },
-                            ),
-                          )
-                        : const Icon(Icons.person, size: 18),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          user.fullName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                        ),
-                        Text(
-                          'Активный профиль',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurface
-                                    .withValues(alpha: 0.6),
-                              ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
+        UserAccountsDrawerHeader(
+          decoration: BoxDecoration(color: Theme.of(context).primaryColor),
+          accountName: Text(user.fullName),
+          accountEmail: Text(user.email),
+          currentAccountPicture: CircleAvatar(
+            backgroundColor: Colors.white,
+            backgroundImage: (user.avatarUrl != null && user.avatarUrl!.isNotEmpty)
+                ? NetworkImage(user.avatarUrl!)
+                : null,
+            child: (user.avatarUrl == null || user.avatarUrl!.isEmpty) ? Icon(Icons.person, color: Theme.of(context).primaryColor, size: 40) : null,
           ),
         ),
-        Divider(height: 1, color: Theme.of(context).dividerColor),
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.zero,
             children: [
               for (final link in links)
-                _NavTile(
-                  icon: link.icon,
-                  label: link.label,
+                ListTile(
+                  leading: Icon(link.icon),
+                  title: Text(link.label),
                   selected: selectedRouteName == link.routeName,
-                  onTap: () => onNavigate(link.routeName),
+                  onTap: () => onNavigate(link.routeName, extraArgs: link.extraArgs),
                 ),
-            ],
-          ),
-        ),
-        Divider(height: 1, color: Theme.of(context).dividerColor),
-        Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-                child: Row(
-                  children: [
-                    Text(
-                      'Тема',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurface
-                                .withValues(alpha: 0.65),
-                          ),
-                    ),
-                    const Spacer(),
-                    const ThemeToggleButton(),
-                  ],
-                ),
-              ),
-              _NavTile(
-                icon: Icons.account_circle_outlined,
-                label: 'Профиль',
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.account_circle_outlined),
+                title: const Text('Профиль'),
                 selected: selectedRouteName == AppRoutes.profile,
                 onTap: onOpenProfile,
               ),
-              const SizedBox(height: 4),
-              TextButton.icon(
-                onPressed: onLogout,
-                icon: const Icon(Icons.logout, size: 18),
-                label: const Text('Выйти'),
-                style: TextButton.styleFrom(
-                  alignment: Alignment.centerLeft,
-                  minimumSize: const Size.fromHeight(44),
-                ),
+              ListTile(
+                leading: const Icon(Icons.logout),
+                title: const Text('Выйти'),
+                onTap: onLogout,
               ),
             ],
           ),
         ),
+        const Divider(),
+        const Padding(
+          padding: EdgeInsets.all(16.0),
+          child: ThemeToggleButton(),
+        ),
       ],
-    );
-  }
-}
-
-class _NavTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _NavTile({
-    required this.icon,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final fg = selected
-        ? Theme.of(context).colorScheme.primary
-        : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8);
-    final bg = selected
-        ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.10)
-        : Colors.transparent;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 20, color: fg),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                label,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: fg,
-                      fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                    ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -409,87 +262,64 @@ class _NavLink {
   final String routeName;
   final IconData icon;
   final String label;
+  final bool isEventSpecific;
+  final Map<String, dynamic>? extraArgs;
 
   const _NavLink({
     required this.routeName,
     required this.icon,
     required this.label,
+    this.isEventSpecific = true,
+    this.extraArgs,
   });
 }
 
 List<_NavLink> _navLinksForRole(UiRole role) {
-  switch (role) {
-    case UiRole.organizer:
-      return const [
-        _NavLink(
-          routeName: AppRoutes.organizerDashboard,
-          icon: Icons.dashboard_outlined,
-          label: 'Дашборд',
-        ),
-        _NavLink(
-          routeName: AppRoutes.organizerSections,
-          icon: Icons.groups_outlined,
-          label: 'Секции',
-        ),
-        _NavLink(
-          routeName: AppRoutes.organizerTasks,
-          icon: Icons.checklist_outlined,
-          label: 'Задачи',
-        ),
-        _NavLink(
-          routeName: AppRoutes.organizerSchedule,
-          icon: Icons.calendar_month_outlined,
-          label: 'Программа',
-        ),
-        _NavLink(
-          routeName: AppRoutes.participantProgram,
-          icon: Icons.slideshow_outlined,
-          label: 'Расписание',
-        ),
-      ];
-    case UiRole.curator:
-      return const [
-        _NavLink(
-          routeName: AppRoutes.curatorDashboard,
-          icon: Icons.dashboard_outlined,
-          label: 'Дашборд',
-        ),
-        _NavLink(
-          routeName: AppRoutes.curatorReports,
-          icon: Icons.description_outlined,
-          label: 'Отчеты',
-        ),
-        _NavLink(
-          routeName: AppRoutes.participantProgram,
-          icon: Icons.slideshow_outlined,
-          label: 'Программа',
-        ),
-      ];
-    case UiRole.speaker:
-      return const [
-        _NavLink(
-          routeName: AppRoutes.speakerTalks,
-          icon: Icons.mic_none_outlined,
-          label: 'Мои доклады',
-        ),
-        _NavLink(
-          routeName: AppRoutes.participantProgram,
-          icon: Icons.calendar_month_outlined,
-          label: 'Программа',
-        ),
-      ];
-    case UiRole.participant:
-      return const [
-        _NavLink(
-          routeName: AppRoutes.participantProgram,
-          icon: Icons.slideshow_outlined,
-          label: 'Программа',
-        ),
-        _NavLink(
-          routeName: AppRoutes.participantMySchedule,
-          icon: Icons.calendar_today_outlined,
-          label: 'Моё расписание',
-        ),
-      ];
+  final List<_NavLink> links = [];
+
+  // Вкладки мероприятия (TabBar)
+  if (role == UiRole.organizer) {
+    links.addAll([
+      const _NavLink(routeName: AppRoutes.organizerDashboard, icon: Icons.dashboard, label: 'Дашборд'),
+      const _NavLink(routeName: AppRoutes.organizerSections, icon: Icons.groups, label: 'Секции'),
+      const _NavLink(routeName: AppRoutes.organizerTasks, icon: Icons.checklist, label: 'Задачи'),
+      const _NavLink(routeName: AppRoutes.organizerSchedule, icon: Icons.calendar_month, label: 'Наполнение'),
+    ]);
+  } else if (role == UiRole.curator) {
+    links.addAll([
+      const _NavLink(routeName: AppRoutes.curatorDashboard, icon: Icons.dashboard, label: 'Дашборд'),
+      const _NavLink(routeName: AppRoutes.curatorReports, icon: Icons.description, label: 'Отчеты'),
+    ]);
+  } else if (role == UiRole.speaker) {
+    links.addAll([
+      const _NavLink(routeName: AppRoutes.speakerTalks, icon: Icons.mic, label: 'Доклады'),
+    ]);
+  } else if (role == UiRole.participant) {
+    links.addAll([
+      const _NavLink(routeName: AppRoutes.participantProgram, icon: Icons.slideshow, label: 'Программа'),
+    ]);
   }
+
+  // Глобальные ссылки (Drawer)
+  links.add(
+    const _NavLink(
+      routeName: AppRoutes.allEvents, 
+      icon: Icons.event, 
+      label: 'Все мероприятия', 
+      isEventSpecific: false,
+    )
+  );
+
+  if (role == UiRole.participant) {
+    links.add(
+      const _NavLink(
+        routeName: AppRoutes.participantMySchedule, 
+        icon: Icons.calendar_today, 
+        label: 'Моё расписание', 
+        isEventSpecific: false
+      )
+    );
+  }
+
+  return links;
 }

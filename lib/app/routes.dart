@@ -15,6 +15,7 @@ import '../ui_stub/features/participant/presentation/pages/my_schedule_page.dart
 import '../ui_stub/features/speaker/presentation/pages/speaker_talks_page.dart';
 import '../ui_stub/features/talk/presentation/pages/talk_details_page.dart';
 import '../ui_stub/features/participant/presentation/pages/event_details_page.dart';
+import '../ui_stub/features/participant/presentation/pages/all_events_page.dart';
 import '../ui_stub/shared/route_args.dart';
 import '../ui/auth_test_screen.dart';
 
@@ -23,6 +24,7 @@ class AppRoutes {
   static const register = '/register';
   static const profile = '/profile';
   static const debug = '/debug';
+  static const allEvents = '/all-events';
 
   static const curatorDashboard = '/curator/dashboard';
   static const curatorReports = '/curator/reports';
@@ -42,16 +44,7 @@ class AppRoutes {
 
   /// Корневой экран роли (после входа), без вложенного стека.
   static String homeRouteForRole(UiRole role) {
-    switch (role) {
-      case UiRole.organizer:
-        return organizerDashboard;
-      case UiRole.curator:
-        return curatorDashboard;
-      case UiRole.speaker:
-        return speakerTalks;
-      case UiRole.participant:
-        return participantProgram;
-    }
+    return allEvents;
   }
 
   static void navigateToRoleHome(
@@ -77,6 +70,9 @@ class AppRoutes {
               role: uiRoleFromArgs(ModalRoute.of(context)?.settings.arguments),
             ),
         debug: (_) => const AuthTestScreen(),
+        allEvents: (context) => AllEventsPage(
+              role: uiRoleFromArgs(ModalRoute.of(context)?.settings.arguments),
+            ),
         curatorDashboard: (_) => const CuratorDashboardPage(),
         curatorReports: (_) => const CuratorReportsPage(),
         organizerDashboard: (_) => const OrganizerDashboardPage(),
