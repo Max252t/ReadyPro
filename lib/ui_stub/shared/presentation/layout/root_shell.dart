@@ -284,19 +284,23 @@ List<_NavLink> _navLinksForRole(UiRole role) {
       const _NavLink(routeName: AppRoutes.organizerSections, icon: Icons.groups, label: 'Секции'),
       const _NavLink(routeName: AppRoutes.organizerTasks, icon: Icons.checklist, label: 'Задачи'),
       const _NavLink(routeName: AppRoutes.organizerSchedule, icon: Icons.calendar_month, label: 'Наполнение'),
+      const _NavLink(routeName: AppRoutes.eventTeam, icon: Icons.badge, label: 'Команда'),
     ]);
   } else if (role == UiRole.curator) {
     links.addAll([
       const _NavLink(routeName: AppRoutes.curatorDashboard, icon: Icons.dashboard, label: 'Дашборд'),
       const _NavLink(routeName: AppRoutes.curatorReports, icon: Icons.description, label: 'Отчеты'),
+      const _NavLink(routeName: AppRoutes.eventTeam, icon: Icons.badge, label: 'Команда'),
     ]);
   } else if (role == UiRole.speaker) {
     links.addAll([
       const _NavLink(routeName: AppRoutes.speakerTalks, icon: Icons.mic, label: 'Доклады'),
+      const _NavLink(routeName: AppRoutes.eventTeam, icon: Icons.badge, label: 'Команда'),
     ]);
   } else if (role == UiRole.participant) {
     links.addAll([
       const _NavLink(routeName: AppRoutes.participantProgram, icon: Icons.slideshow, label: 'Программа'),
+      const _NavLink(routeName: AppRoutes.eventTeam, icon: Icons.badge, label: 'Команда'),
     ]);
   }
 

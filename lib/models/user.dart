@@ -8,6 +8,7 @@ class Profile {
   final String? avatarUrl;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final UserRole? role; // Добавлено для отображения роли в контексте ивента
 
   Profile({
     required this.id,
@@ -17,7 +18,30 @@ class Profile {
     this.avatarUrl,
     this.createdAt,
     this.updatedAt,
+    this.role,
   });
+
+  Profile copyWith({
+    String? id,
+    String? fullName,
+    String? email,
+    String? company,
+    String? avatarUrl,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    UserRole? role,
+  }) {
+    return Profile(
+      id: id ?? this.id,
+      fullName: fullName ?? this.fullName,
+      email: email ?? this.email,
+      company: company ?? this.company,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      role: role ?? this.role,
+    );
+  }
 
   factory Profile.fromJson(Map<String, dynamic> json) {
     return Profile(
@@ -28,6 +52,7 @@ class Profile {
       avatarUrl: json['avatar_url'],
       createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
       updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at']) : null,
+      role: json['role'] != null ? UserRole.fromString(json['role']) : null,
     );
   }
 
@@ -37,6 +62,7 @@ class Profile {
     'email': email,
     'company': company,
     'avatar_url': avatarUrl,
+    'role': role?.name,
   };
 }
 

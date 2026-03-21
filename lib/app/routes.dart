@@ -16,6 +16,7 @@ import '../ui_stub/features/speaker/presentation/pages/speaker_talks_page.dart';
 import '../ui_stub/features/talk/presentation/pages/talk_details_page.dart';
 import '../ui_stub/features/participant/presentation/pages/event_details_page.dart';
 import '../ui_stub/features/participant/presentation/pages/all_events_page.dart';
+import '../ui_stub/features/participant/presentation/pages/event_team_page.dart';
 import '../ui_stub/shared/route_args.dart';
 import '../ui/auth_test_screen.dart';
 
@@ -36,6 +37,7 @@ class AppRoutes {
 
   static const participantProgram = '/participant/program';
   static const participantMySchedule = '/participant/my-schedule';
+  static const eventTeam = '/event/team';
 
   static const speakerTalks = '/speaker/talks';
 
@@ -78,11 +80,16 @@ class AppRoutes {
         organizerDashboard: (_) => const OrganizerDashboardPage(),
         organizerSchedule: (_) => const SchedulePage(),
         organizerSections: (_) => const SectionsPage(),
-        organizerTasks: (_) => const TasksPage(),
+        organizerTasks: (context) => TasksPage(
+              role: uiRoleFromArgs(ModalRoute.of(context)?.settings.arguments),
+            ),
         participantProgram: (context) => ProgramPage(
               role: uiRoleFromArgs(ModalRoute.of(context)?.settings.arguments),
             ),
         participantMySchedule: (context) => MySchedulePage(
+              role: uiRoleFromArgs(ModalRoute.of(context)?.settings.arguments),
+            ),
+        eventTeam: (context) => EventTeamPage(
               role: uiRoleFromArgs(ModalRoute.of(context)?.settings.arguments),
             ),
         speakerTalks: (context) => SpeakerTalksPage(

@@ -10,6 +10,7 @@ import 'package:ready_pro/blocs/event/event_event.dart';
 import 'package:ready_pro/blocs/event/event_state.dart';
 import 'package:ready_pro/models/task.dart';
 import 'package:ready_pro/models/user.dart';
+import 'package:ready_pro/core/enums.dart';
 import 'package:ready_pro/app/layout/app_breakpoints.dart';
 
 import '../../../../shared/presentation/layout/root_shell.dart';
@@ -17,7 +18,8 @@ import '../../../../shared/mock/ui_models.dart';
 import '../../../../shared/route_args.dart';
 
 class TasksPage extends StatefulWidget {
-  const TasksPage({super.key});
+  final UiRole role;
+  const TasksPage({super.key, required this.role});
 
   @override
   State<TasksPage> createState() => _TasksPageState();
@@ -51,15 +53,15 @@ class _TasksPageState extends State<TasksPage> {
       text: DateTime.now().add(const Duration(days: 7)).toIso8601String().split('T')[0],
     );
 
-    // Фильтруем участников: только кураторы и спикеры
-    // (Хотя в некоторых случаях можно назначать и участникам, но по запросу - кураторы и спикеры)
-    // Мы можем сделать это прямо в диалоге или заранее.
-    
     await showDialog<void>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setState) {
-          final candidates = _allParticipants;
+          // Реализация требования: куратор не может поручить задачу организатору
+          var candidates = _allParticipants;
+          if (widget.role == UiRole.curator) {
+            candidates = candidates.where((p) => p.role != UserRole.organizer).toList();
+          }
 
           return AlertDialog(
             title: const Text('Создать задачу'),
@@ -71,10 +73,10 @@ class _TasksPageState extends State<TasksPage> {
                   children: [
                     DropdownButtonFormField<Profile>(
                       isExpanded: true,
-                      decoration: const InputDecoration(labelText: 'Исполнитель (Поиск по имени)'),
+                      decoration: const InputDecoration(labelText: 'Исполнитель'),
                       items: candidates.map((p) => DropdownMenuItem(
                         value: p,
-                        child: Text('${p.fullName} (${p.email})'),
+                        child: Text('${p.fullName} (${_roleLabelRu(p.role)})'),
                       )).toList(),
                       onChanged: (val) => setState(() => selectedAssignee = val),
                       value: selectedAssignee,
@@ -139,13 +141,23 @@ class _TasksPageState extends State<TasksPage> {
     );
   }
 
+  String _roleLabelRu(UserRole? r) {
+    switch (r) {
+      case UserRole.organizer: return 'Организатор';
+      case UserRole.curator: return 'Куратор';
+      case UserRole.speaker: return 'Спикер';
+      case UserRole.participant: return 'Участник';
+      default: return 'Пользователь';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_eventId == null) {
-      return const RootShell(
-        role: UiRole.organizer,
+      return RootShell(
+        role: widget.role,
         title: 'Управление задачами',
-        child: Center(child: CircularProgressIndicator()),
+        child: const Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -162,7 +174,7 @@ class _TasksPageState extends State<TasksPage> {
         ),
       ],
       child: RootShell(
-        role: UiRole.organizer,
+        role: widget.role,
         title: 'Управление задачами',
         child: BlocBuilder<OrganizerBloc, OrganizerState>(
           builder: (context, state) {
@@ -173,6 +185,11 @@ class _TasksPageState extends State<TasksPage> {
             if (state is OrganizerDashboardLoaded) {
               final tasks = state.tasks;
               final eventId = state.event.id;
+
+              // Если текущий пользователь - куратор, возможно он хочет видеть только те задачи,
+              // которые он сам поставил или которые назначены ему? 
+              // Но обычно задачи - это общая доска для команды.
+              // Оставим пока отображение всех задач ивента.
 
               final active = tasks.where((t) => !t.isCompleted).toList();
               final done = tasks.where((t) => t.isCompleted).toList();

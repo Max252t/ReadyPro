@@ -87,12 +87,13 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Future<void> _showCreateEventDialog() async {
-    final titleController = TextEditingController();
-    final descController = TextEditingController();
-    final locationController = TextEditingController();
-    DateTime? startDate;
-    DateTime? endDate;
+  Future<void> _showCreateOrEditEventDialog({Event? event}) async {
+    final isEdit = event != null;
+    final titleController = TextEditingController(text: event?.title);
+    final descController = TextEditingController(text: event?.description);
+    final locationController = TextEditingController(text: event?.location);
+    DateTime? startDate = event?.startDate;
+    DateTime? endDate = event?.endDate;
     File? selectedImage;
     
     final authState = context.read<AuthBloc>().state;
@@ -102,7 +103,7 @@ class _ProfilePageState extends State<ProfilePage> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Создать мероприятие'),
+          title: Text(isEdit ? 'Редактировать мероприятие' : 'Создать мероприятие'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -125,9 +126,11 @@ class _ProfilePageState extends State<ProfilePage> {
                       borderRadius: BorderRadius.circular(12),
                       image: selectedImage != null 
                         ? DecorationImage(image: FileImage(selectedImage!), fit: BoxFit.cover)
-                        : const DecorationImage(image: AssetImage('assets/images/event.png'), fit: BoxFit.cover),
+                        : (event?.imageUrl != null && event!.imageUrl!.isNotEmpty)
+                          ? DecorationImage(image: NetworkImage(event.imageUrl!), fit: BoxFit.cover)
+                          : const DecorationImage(image: AssetImage('assets/images/event.png'), fit: BoxFit.cover),
                     ),
-                    child: selectedImage == null 
+                    child: (selectedImage == null && (event?.imageUrl == null || event?.imageUrl?.isEmpty == true))
                       ? const Center(child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -153,7 +156,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         onPressed: () async {
                           final date = await showDatePicker(
                             context: context,
-                            initialDate: DateTime.now(),
+                            initialDate: startDate ?? DateTime.now(),
                             firstDate: DateTime.now(),
                             lastDate: DateTime(2100),
                           );
@@ -169,7 +172,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         onPressed: () async {
                           final date = await showDatePicker(
                             context: context,
-                            initialDate: startDate ?? DateTime.now(),
+                            initialDate: endDate ?? startDate ?? DateTime.now(),
                             firstDate: startDate ?? DateTime.now(),
                             lastDate: DateTime(2100),
                           );
@@ -190,20 +193,31 @@ class _ProfilePageState extends State<ProfilePage> {
               onPressed: () {
                 if (titleController.text.isEmpty) return;
                 
-                final newEvent = Event(
-                  id: '',
-                  title: titleController.text.trim(),
-                  description: descController.text.trim(),
-                  location: locationController.text.trim(),
-                  startDate: startDate,
-                  endDate: endDate,
-                  status: EventStatus.preparation,
-                  createdBy: authState.user.id,
-                );
-                context.read<EventBloc>().add(CreateEventRequested(newEvent, imageFile: selectedImage));
+                if (isEdit) {
+                   final updatedEvent = event.copyWith(
+                    title: titleController.text.trim(),
+                    description: descController.text.trim(),
+                    location: locationController.text.trim(),
+                    startDate: startDate,
+                    endDate: endDate,
+                  );
+                  context.read<EventBloc>().add(CreateEventRequested(updatedEvent, imageFile: selectedImage));
+                } else {
+                  final newEvent = Event(
+                    id: '',
+                    title: titleController.text.trim(),
+                    description: descController.text.trim(),
+                    location: locationController.text.trim(),
+                    startDate: startDate,
+                    endDate: endDate,
+                    status: EventStatus.preparation,
+                    createdBy: authState.user.id,
+                  );
+                  context.read<EventBloc>().add(CreateEventRequested(newEvent, imageFile: selectedImage));
+                }
                 Navigator.pop(context);
               },
-              child: const Text('Создать'),
+              child: Text(isEdit ? 'Сохранить' : 'Создать'),
             ),
           ],
         ),
@@ -213,190 +227,243 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<AuthBloc, AuthState>(
-      builder: (context, authState) {
-        if (authState is! AuthAuthenticated) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    return BlocListener<EventBloc, EventState>(
+      listener: (context, state) {
+        if (state is EventOperationSuccess) {
+          _refresh(); 
         }
+      },
+      child: BlocBuilder<AuthBloc, AuthState>(
+        builder: (context, authState) {
+          if (authState is! AuthAuthenticated) {
+            return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          }
 
-        final profile = authState.user;
+          final profile = authState.user;
 
-        return RootShell(
-          role: widget.role,
-          title: 'Профиль',
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Ваша информация и активность',
-                        style: TextStyle(fontSize: 14, color: Colors.grey),
+          return RootShell(
+            role: widget.role,
+            title: 'Профиль',
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Ваша информация и активность',
+                          style: TextStyle(fontSize: 14, color: Colors.grey),
+                        ),
+                      ),
+                      const ThemeToggleButton(),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Expanded(
+                                child: Text(
+                                  'Основная информация',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
+                              ),
+                              IconButton(onPressed: _showEditProfileDialog, icon: const Icon(Icons.edit, size: 20)),
+                            ],
+                          ),
+                          const Divider(),
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final isSmall = constraints.maxWidth < 400;
+                              return Wrap(
+                                spacing: 16,
+                                runSpacing: 16,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  GestureDetector(
+                                    onTap: _pickAvatar,
+                                    child: Stack(
+                                      children: [
+                                        CircleAvatar(
+                                          radius: 40,
+                                          child: (profile.avatarUrl != null && profile.avatarUrl!.isNotEmpty)
+                                              ? ClipOval(
+                                                  child: Image.network(
+                                                    profile.avatarUrl!,
+                                                    width: 80,
+                                                    height: 80,
+                                                    fit: BoxFit.cover,
+                                                    errorBuilder: (_, __, ___) {
+                                                      return const Icon(Icons.person, size: 40);
+                                                    },
+                                                  ),
+                                                )
+                                              : const Icon(Icons.person, size: 40),
+                                        ),
+                                        Positioned(
+                                          right: 0,
+                                          bottom: 0,
+                                          child: Container(
+                                            padding: const EdgeInsets.all(4),
+                                            decoration: BoxDecoration(color: Theme.of(context).primaryColor, shape: BoxShape.circle),
+                                            child: const Icon(Icons.camera_alt, size: 14, color: Colors.white),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    width: isSmall ? constraints.maxWidth : constraints.maxWidth - 100,
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(profile.fullName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
+                                        Text(profile.email, style: const TextStyle(color: Colors.grey), overflow: TextOverflow.ellipsis),
+                                        if (profile.company != null) Text(profile.company!, style: const TextStyle(color: Colors.grey), overflow: TextOverflow.ellipsis),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                        ],
                       ),
                     ),
-                    const ThemeToggleButton(),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Expanded(
-                              child: Text(
-                                'Основная информация',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
-                              ),
-                            ),
-                            IconButton(onPressed: _showEditProfileDialog, icon: const Icon(Icons.edit, size: 20)),
-                          ],
-                        ),
-                        const Divider(),
-                        LayoutBuilder(
-                          builder: (context, constraints) {
-                            final isSmall = constraints.maxWidth < 400;
-                            return Wrap(
-                              spacing: 16,
-                              runSpacing: 16,
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              children: [
-                                GestureDetector(
-                                  onTap: _pickAvatar,
-                                  child: Stack(
-                                    children: [
-                                      CircleAvatar(
-                                        radius: 40,
-                                        child: (profile.avatarUrl != null && profile.avatarUrl!.isNotEmpty)
-                                            ? ClipOval(
-                                                child: Image.network(
-                                                  profile.avatarUrl!,
-                                                  width: 80,
-                                                  height: 80,
-                                                  fit: BoxFit.cover,
-                                                  errorBuilder: (_, __, ___) {
-                                                    return const Icon(Icons.person, size: 40);
-                                                  },
-                                                ),
-                                              )
-                                            : const Icon(Icons.person, size: 40),
+                  ),
+                  const SizedBox(height: 24),
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      const Text(
+                        'Мои мероприятия',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                      TextButton.icon(
+                        onPressed: () => _showCreateOrEditEventDialog(),
+                        icon: const Icon(Icons.add),
+                        label: const Text('Создать'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  BlocBuilder<EventBloc, EventState>(
+                    builder: (context, state) {
+                      if (state is EventLoading) return const Center(child: CircularProgressIndicator());
+                      if (state is EventsLoaded) {
+                        if (state.events.isEmpty) return const Center(child: Text('Нет мероприятий'));
+                        return ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: state.events.length,
+                          itemBuilder: (context, index) {
+                            final e = state.events[index];
+                            final isOrganizer = e.role == UserRole.organizer;
+
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              child: ListTile(
+                                leading: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: (e.imageUrl != null && e.imageUrl!.isNotEmpty)
+                                    ? Image.network(
+                                        e.imageUrl!,
+                                        width: 40,
+                                        height: 40,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) {
+                                          return Image.asset(
+                                            'assets/images/event.png',
+                                            width: 40,
+                                            height: 40,
+                                            fit: BoxFit.cover,
+                                          );
+                                        },
+                                      )
+                                    : Image.asset(
+                                        'assets/images/event.png',
+                                        width: 40,
+                                        height: 40,
+                                        fit: BoxFit.cover,
                                       ),
-                                      Positioned(
-                                        right: 0,
-                                        bottom: 0,
-                                        child: Container(
-                                          padding: const EdgeInsets.all(4),
-                                          decoration: BoxDecoration(color: Theme.of(context).primaryColor, shape: BoxShape.circle),
-                                          child: const Icon(Icons.camera_alt, size: 14, color: Colors.white),
+                                ),
+                                title: Text(e.title, overflow: TextOverflow.ellipsis),
+                                subtitle: Text(_userRoleLabelRu(e.role)),
+                                trailing: isOrganizer 
+                                  ? Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(Icons.edit, size: 20),
+                                          onPressed: () {
+                                            final eventObj = Event(
+                                              id: e.eventId,
+                                              title: e.title,
+                                              status: e.status,
+                                              imageUrl: e.imageUrl,
+                                              createdBy: profile.id,
+                                            );
+                                            _showCreateOrEditEventDialog(event: eventObj);
+                                          },
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                SizedBox(
-                                  width: isSmall ? constraints.maxWidth : constraints.maxWidth - 100,
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(profile.fullName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
-                                      Text(profile.email, style: const TextStyle(color: Colors.grey), overflow: TextOverflow.ellipsis),
-                                      if (profile.company != null) Text(profile.company!, style: const TextStyle(color: Colors.grey), overflow: TextOverflow.ellipsis),
-                                    ],
-                                  ),
-                                ),
-                              ],
+                                        IconButton(
+                                          icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                                          onPressed: () => _showDeleteConfirm(context, e.eventId),
+                                        ),
+                                        const Icon(Icons.chevron_right),
+                                      ],
+                                    )
+                                  : const Icon(Icons.chevron_right),
+                                onTap: () => _navigateToEvent(context, e.role, e.eventId),
+                              ),
                             );
                           },
-                        ),
-                      ],
-                    ),
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
                   ),
-                ),
-                const SizedBox(height: 24),
-                Wrap(
-                  alignment: WrapAlignment.spaceBetween,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    const Text(
-                      'Мои мероприятия',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
-                    TextButton.icon(
-                      onPressed: _showCreateEventDialog,
-                      icon: const Icon(Icons.add),
-                      label: const Text('Создать'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                BlocBuilder<EventBloc, EventState>(
-                  builder: (context, state) {
-                    if (state is EventLoading) return const Center(child: CircularProgressIndicator());
-                    if (state is EventsLoaded) {
-                      if (state.events.isEmpty) return const Center(child: Text('Нет мероприятий'));
-                      return ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: state.events.length,
-                        itemBuilder: (context, index) {
-                          final e = state.events[index];
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            child: ListTile(
-                              leading: ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: (e.imageUrl != null && e.imageUrl!.isNotEmpty)
-                                  ? Image.network(
-                                      e.imageUrl!,
-                                      width: 40,
-                                      height: 40,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) {
-                                        return Image.asset(
-                                          'assets/images/event.png',
-                                          width: 40,
-                                          height: 40,
-                                          fit: BoxFit.cover,
-                                        );
-                                      },
-                                    )
-                                  : Image.asset(
-                                      'assets/images/event.png',
-                                      width: 40,
-                                      height: 40,
-                                      fit: BoxFit.cover,
-                                    ),
-                              ),
-                              title: Text(e.title, overflow: TextOverflow.ellipsis),
-                              subtitle: Text(_userRoleLabelRu(e.role)),
-                              trailing: const Icon(Icons.chevron_right),
-                              onTap: () => _navigateToEvent(context, e.role, e.eventId),
-                            ),
-                          );
-                        },
-                      );
-                    }
-                    return const SizedBox.shrink();
-                  },
-                ),
-              ],
+                ],
+              ),
             ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _showDeleteConfirm(BuildContext context, String eventId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Удалить мероприятие?'),
+        content: const Text('Это действие нельзя будет отменить.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
+          TextButton(
+            onPressed: () {
+              context.read<EventBloc>().add(DeleteEventRequested(eventId));
+              Navigator.pop(context);
+            },
+            child: const Text('Удалить', style: TextStyle(color: Colors.red)),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 
