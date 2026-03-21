@@ -5,6 +5,7 @@ import 'package:ready_pro/models/user_event.dart';
 import 'package:ready_pro/models/user.dart';
 import 'package:ready_pro/repositories/event_repository.dart';
 import 'package:ready_pro/core/enums.dart';
+import 'package:ready_pro/core/logger.dart';
 
 class SupabaseEventRepository implements EventRepository {
   final SupabaseClient _client;
@@ -61,7 +62,7 @@ class SupabaseEventRepository implements EventRepository {
             _signedUrlTtlSeconds,
           );
     } catch (e) {
-      print('CreateSignedUrl (storage=$bucket) failed: $e');
+      AppLogger.e('CreateSignedUrl (storage=$bucket) failed', e);
       return imageUrl;
     }
   }
@@ -280,7 +281,7 @@ class SupabaseEventRepository implements EventRepository {
       
       return _client.storage.from('event_images').getPublicUrl(fileName);
     } catch (e) {
-      print('Error uploading event image: $e');
+      AppLogger.e('Error uploading event image', e);
       return null;
     }
   }

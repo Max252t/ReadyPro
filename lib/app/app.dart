@@ -31,8 +31,6 @@ class ReadyProApp extends StatefulWidget {
 
 class _ReadyProAppState extends State<ReadyProApp> {
   late final AppThemeController _themeController;
-  // Навигация через key не зависит от контекста конкретного виджета.
-  // Это убирает ошибку "Navigator operation requested with a context..."
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
   @override
@@ -108,6 +106,18 @@ class _ReadyProAppState extends State<ReadyProApp> {
                       nav?.pushNamedAndRemoveUntil(
                         AppRoutes.login,
                         (route) => false,
+                      );
+                    });
+                  } else if (state is AuthAuthenticated) {
+                     WidgetsBinding.instance.addPostFrameCallback((_) {
+                      final nav = _navigatorKey.currentState;
+                      // Проверяем текущий роут, чтобы не перенаправлять бесконечно
+                      // Если мы на странице логина или регистрации, переходим на главный экран
+                      // Используем pushNamedAndRemoveUntil для очистки стека
+                      nav?.pushNamedAndRemoveUntil(
+                        AppRoutes.allEvents,
+                        (route) => false,
+                        arguments: {'role': state.user.role},
                       );
                     });
                   }

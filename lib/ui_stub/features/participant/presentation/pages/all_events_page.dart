@@ -25,6 +25,7 @@ class _AllEventsPageState extends State<AllEventsPage> {
   @override
   void initState() {
     super.initState();
+    // Принудительно загружаем список всех мероприятий при входе на экран
     context.read<EventBloc>().add(LoadAllEvents());
   }
 
@@ -69,39 +70,61 @@ class _AllEventsPageState extends State<AllEventsPage> {
           Expanded(
             child: BlocBuilder<EventBloc, EventState>(
               builder: (context, state) {
-                if (state is EventLoading) {
+                // Если мы в процессе загрузки или в начальном состоянии, всегда показываем лоадер
+                if (state is EventLoading || state is EventInitial) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                List<Event> events = [];
+                // Обработка ошибок
+                if (state is EventFailure) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                        const SizedBox(height: 16),
+                        Text('Ошибка: ${state.message}'),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: () => context.read<EventBloc>().add(LoadAllEvents()),
+                          child: const Text('Повторить'),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                // Отображаем список только если состояние AllEventsLoaded
                 if (state is AllEventsLoaded) {
-                  events = state.events;
-                } else if (state is EventsLoaded) {
-                  // Fallback if needed
+                  final events = state.events;
+
+                  if (events.isEmpty) {
+                    return const Center(child: Text('Мероприятий пока нет'));
+                  }
+
+                  var filtered = events;
+                  if (_searchController.text.isNotEmpty) {
+                    filtered = filtered
+                        .where((e) => e.title.toLowerCase().contains(_searchController.text.toLowerCase()))
+                        .toList();
+                  }
+
+                  if (filtered.isEmpty) {
+                    return const Center(child: Text('По вашему запросу ничего не найдено'));
+                  }
+
+                  return ListView.builder(
+                    itemCount: filtered.length,
+                    itemBuilder: (context, index) {
+                      final event = filtered[index];
+                      return _EventCard(event: event, role: widget.role);
+                    },
+                  );
                 }
 
-                if (events.isEmpty && state is! EventLoading) {
-                  return const Center(child: Text('Мероприятий не найдено'));
-                }
-
-                var filtered = events;
-                if (_searchController.text.isNotEmpty) {
-                  filtered = filtered
-                      .where((e) => e.title.toLowerCase().contains(_searchController.text.toLowerCase()))
-                      .toList();
-                }
-
-                if (filtered.isEmpty) {
-                  return const Center(child: Text('По вашему запросу ничего не найдено'));
-                }
-
-                return ListView.builder(
-                  itemCount: filtered.length,
-                  itemBuilder: (context, index) {
-                    final event = filtered[index];
-                    return _EventCard(event: event, role: widget.role);
-                  },
-                );
+                // Если состояние другое (например, EventsLoaded от другого экрана), 
+                // показываем лоадер, так как мы ожидаем AllEventsLoaded для этого экрана
+                return const Center(child: CircularProgressIndicator());
               },
             ),
           ),

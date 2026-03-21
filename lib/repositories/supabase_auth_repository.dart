@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import 'package:ready_pro/models/user.dart';
 import 'package:ready_pro/repositories/auth_repository.dart';
+import 'package:ready_pro/core/logger.dart';
 
 class AuthException implements Exception {
   final String message;
@@ -49,7 +50,7 @@ class SupabaseAuthRepository implements AuthRepository {
           );
     } catch (e) {
       // Keep the original URL so the UI can still decide what to do.
-      print('CreateSignedUrl (profile) failed: $e');
+      AppLogger.e('CreateSignedUrl (profile) failed', e);
       return avatarUrl;
     }
   }
@@ -74,7 +75,7 @@ class SupabaseAuthRepository implements AuthRepository {
 
       return _client.storage.from('profile').getPublicUrl(fileName);
     } catch (e) {
-      print('Error uploading default avatar: $e');
+      AppLogger.e('Error uploading default avatar', e);
       return null;
     }
   }
@@ -107,7 +108,7 @@ class SupabaseAuthRepository implements AuthRepository {
 
       return newUrl;
     } catch (e) {
-      print('Update avatar error: $e');
+      AppLogger.e('Update avatar error', e);
       rethrow;
     }
   }
@@ -237,15 +238,7 @@ class SupabaseAuthRepository implements AuthRepository {
 
     // Always replace with signed URL when possible.
     if (signedAvatarUrl != profile.avatarUrl) {
-      return Profile(
-        id: profile.id,
-        fullName: profile.fullName,
-        email: profile.email,
-        company: profile.company,
-        avatarUrl: signedAvatarUrl,
-        createdAt: profile.createdAt,
-        updatedAt: profile.updatedAt,
-      );
+      return profile.copyWith(avatarUrl: signedAvatarUrl);
     }
     return profile;
   }
