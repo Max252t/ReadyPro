@@ -157,8 +157,10 @@ class _ProgramPageState extends State<ProgramPage> with SingleTickerProviderStat
         itemBuilder: (context, index) {
           final event = filtered[index];
           return Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            child: ListTile(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            clipBehavior: Clip.antiAlias,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: InkWell(
               onTap: () {
                 Navigator.pushNamed(
                   context,
@@ -166,41 +168,98 @@ class _ProgramPageState extends State<ProgramPage> with SingleTickerProviderStat
                   arguments: {'eventId': event.id, 'role': widget.role},
                 );
               },
-              leading: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: SizedBox(
-                  width: 50,
-                  height: 50,
-                  child: event.imageUrl != null
-                      ? Image.network(
-                          event.imageUrl!,
-                          width: 50,
-                          height: 50,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) {
-                            return Image.asset(
-                              'assets/images/event.png',
-                              width: 50,
-                              height: 50,
-                              fit: BoxFit.cover,
-                            );
-                          },
-                        )
-                      : Image.asset(
-                          'assets/images/event.png',
-                          width: 50,
-                          height: 50,
-                          fit: BoxFit.cover,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Stack(
+                    children: [
+                      Container(
+                        height: 140,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          image: DecorationImage(
+                            image: (event.imageUrl != null && event.imageUrl!.isNotEmpty)
+                                ? NetworkImage(event.imageUrl!)
+                                : const AssetImage('assets/images/event.png') as ImageProvider,
+                            fit: BoxFit.cover,
+                          ),
                         ),
-                ),
+                      ),
+                      Positioned(
+                        top: 12,
+                        right: 12,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.7),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            event.status.name == 'active' ? 'Идёт сейчас' : 'Скоро',
+                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          event.title,
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 8),
+                        if (event.description != null)
+                          Text(
+                            event.description!,
+                            style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            if (event.startDate != null)
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.calendar_today, size: 16, color: Colors.blue),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      '${event.startDate!.day}.${event.startDate!.month}.${event.startDate!.year}',
+                                      style: const TextStyle(fontSize: 13),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            if (event.location != null && event.location!.isNotEmpty)
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.location_on_outlined, size: 16, color: Colors.red),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        event.location!,
+                                        style: const TextStyle(fontSize: 13),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              title: Text(event.title),
-              subtitle: Text(
-                event.description ?? 'Нет описания',
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              trailing: const Icon(Icons.chevron_right),
             ),
           );
         },

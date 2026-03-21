@@ -90,6 +90,9 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _showCreateEventDialog() async {
     final titleController = TextEditingController();
     final descController = TextEditingController();
+    final locationController = TextEditingController();
+    DateTime? startDate;
+    DateTime? endDate;
     File? selectedImage;
     
     final authState = context.read<AuthBloc>().state;
@@ -116,7 +119,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   },
                   child: Container(
                     width: double.infinity,
-                    height: 120,
+                    height: 150,
                     decoration: BoxDecoration(
                       color: Colors.grey[200],
                       borderRadius: BorderRadius.circular(12),
@@ -125,13 +128,59 @@ class _ProfilePageState extends State<ProfilePage> {
                         : const DecorationImage(image: AssetImage('assets/images/event.png'), fit: BoxFit.cover),
                     ),
                     child: selectedImage == null 
-                      ? const Center(child: Icon(Icons.add_a_photo, size: 32, color: Colors.grey))
+                      ? const Center(child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.add_a_photo, size: 32, color: Colors.grey),
+                            SizedBox(height: 4),
+                            Text('Загрузить обложку', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                          ],
+                        ))
                       : null,
                   ),
                 ),
                 const SizedBox(height: 16),
-                TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Название')),
-                TextField(controller: descController, decoration: const InputDecoration(labelText: 'Описание')),
+                TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Название мероприятий', hintText: 'Напр. TechConf 2024')),
+                const SizedBox(height: 12),
+                TextField(controller: descController, maxLines: 2, decoration: const InputDecoration(labelText: 'Описание')),
+                const SizedBox(height: 12),
+                TextField(controller: locationController, decoration: const InputDecoration(labelText: 'Локация', prefixIcon: Icon(Icons.location_on_outlined))),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          final date = await showDatePicker(
+                            context: context,
+                            initialDate: DateTime.now(),
+                            firstDate: DateTime.now(),
+                            lastDate: DateTime(2100),
+                          );
+                          if (date != null) setDialogState(() => startDate = date);
+                        },
+                        icon: const Icon(Icons.calendar_today, size: 16),
+                        label: Text(startDate == null ? 'Начало' : '${startDate!.day}.${startDate!.month}.${startDate!.year}'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          final date = await showDatePicker(
+                            context: context,
+                            initialDate: startDate ?? DateTime.now(),
+                            firstDate: startDate ?? DateTime.now(),
+                            lastDate: DateTime(2100),
+                          );
+                          if (date != null) setDialogState(() => endDate = date);
+                        },
+                        icon: const Icon(Icons.event, size: 16),
+                        label: Text(endDate == null ? 'Конец' : '${endDate!.day}.${endDate!.month}.${endDate!.year}'),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -143,8 +192,11 @@ class _ProfilePageState extends State<ProfilePage> {
                 
                 final newEvent = Event(
                   id: '',
-                  title: titleController.text,
-                  description: descController.text,
+                  title: titleController.text.trim(),
+                  description: descController.text.trim(),
+                  location: locationController.text.trim(),
+                  startDate: startDate,
+                  endDate: endDate,
                   status: EventStatus.preparation,
                   createdBy: authState.user.id,
                 );
@@ -224,7 +276,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                     children: [
                                       CircleAvatar(
                                         radius: 40,
-                                        child: profile.avatarUrl != null
+                                        child: (profile.avatarUrl != null && profile.avatarUrl!.isNotEmpty)
                                             ? ClipOval(
                                                 child: Image.network(
                                                   profile.avatarUrl!,
@@ -308,7 +360,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             child: ListTile(
                               leading: ClipRRect(
                                 borderRadius: BorderRadius.circular(8),
-                                child: e.imageUrl != null 
+                                child: (e.imageUrl != null && e.imageUrl!.isNotEmpty)
                                   ? Image.network(
                                       e.imageUrl!,
                                       width: 40,
