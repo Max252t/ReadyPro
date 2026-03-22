@@ -73,6 +73,8 @@ class _SpeakerTalksPageState extends State<SpeakerTalksPage> {
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        surfaceTintColor: Colors.transparent,
         title: Text(editing == null ? 'Новый доклад' : 'Редактировать доклад'),
         content: SingleChildScrollView(
           child: SizedBox(

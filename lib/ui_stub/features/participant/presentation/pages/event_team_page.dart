@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:ready_pro/blocs/auth/auth_bloc.dart';
+import 'package:ready_pro/blocs/auth/auth_state.dart';
 import 'package:ready_pro/blocs/event/event_bloc.dart';
 import 'package:ready_pro/blocs/event/event_event.dart';
 import 'package:ready_pro/blocs/event/event_state.dart';
@@ -46,9 +48,6 @@ class _EventTeamPageState extends State<EventTeamPage> {
           if (state is EventParticipantsLoaded) {
             final participants = state.participants;
             
-            // Фильтруем по ролям
-            // Предполагаем, что в Profile или где-то еще есть информация о роли в этом ивенте.
-            // Если LoadEventParticipants возвращает всех участников с их ролями:
             final organizers = participants.where((p) => p.role == UserRole.organizer).toList();
             final curators = participants.where((p) => p.role == UserRole.curator).toList();
             final speakers = participants.where((p) => p.role == UserRole.speaker).toList();
@@ -98,6 +97,10 @@ class _EventTeamPageState extends State<EventTeamPage> {
   }
 
   Widget _buildUserTile(Profile user, String roleLabel) {
+    final authState = context.read<AuthBloc>().state;
+    final currentUserId = authState is AuthAuthenticated ? authState.user.id : '';
+    final isMe = user.id == currentUserId;
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: ListTile(
@@ -109,23 +112,118 @@ class _EventTeamPageState extends State<EventTeamPage> {
               ? const Icon(Icons.person)
               : null,
         ),
-        title: Text(user.fullName),
+        title: Text('${user.fullName}${isMe ? ' (Вы)' : ''}'),
         subtitle: Text(user.company ?? roleLabel),
-        trailing: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: Theme.of(context).primaryColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            roleLabel,
-            style: TextStyle(
-              fontSize: 12,
-              color: Theme.of(context).primaryColor,
-              fontWeight: FontWeight.bold,
+        trailing: isMe 
+          ? null 
+          : IconButton(
+              icon: const Icon(Icons.chat_bubble_outline),
+              onPressed: () => _openChat(user),
+              tooltip: 'Написать сообщение',
+            ),
+      ),
+    );
+  }
+
+  void _openChat(Profile user) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _TeamChatSheet(recipient: user),
+    );
+  }
+}
+
+class _TeamChatSheet extends StatefulWidget {
+  final Profile recipient;
+  const _TeamChatSheet({required this.recipient});
+
+  @override
+  State<_TeamChatSheet> createState() => _TeamChatSheetState();
+}
+
+class _TeamChatSheetState extends State<_TeamChatSheet> {
+  final TextEditingController _controller = TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.8,
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor)),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 16,
+                  backgroundImage: (widget.recipient.avatarUrl != null && widget.recipient.avatarUrl!.isNotEmpty)
+                      ? NetworkImage(widget.recipient.avatarUrl!)
+                      : null,
+                  child: (widget.recipient.avatarUrl == null || widget.recipient.avatarUrl!.isEmpty)
+                      ? const Icon(Icons.person, size: 20)
+                      : null,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    widget.recipient.fullName,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
             ),
           ),
-        ),
+          const Expanded(
+            child: Center(
+              child: Text(
+                'История сообщений пока пуста.\nНачните диалог первым!',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.fromLTRB(16, 8, 16, 8 + MediaQuery.of(context).viewInsets.bottom),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    decoration: const InputDecoration(
+                      hintText: 'Введите сообщение...',
+                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton.filled(
+                  onPressed: () {
+                    if (_controller.text.trim().isNotEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Сообщение отправлено (заглушка)')),
+                      );
+                      _controller.clear();
+                    }
+                  },
+                  icon: const Icon(Icons.send),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -111,9 +111,7 @@ class _ReadyProAppState extends State<ReadyProApp> {
                   } else if (state is AuthAuthenticated) {
                      WidgetsBinding.instance.addPostFrameCallback((_) {
                       final nav = _navigatorKey.currentState;
-                      // Проверяем текущий роут, чтобы не перенаправлять бесконечно
-                      // Если мы на странице логина или регистрации, переходим на главный экран
-                      // Используем pushNamedAndRemoveUntil для очистки стека
+
                       nav?.pushNamedAndRemoveUntil(
                         AppRoutes.allEvents,
                         (route) => false,

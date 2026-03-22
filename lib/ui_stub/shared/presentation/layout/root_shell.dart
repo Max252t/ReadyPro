@@ -147,7 +147,10 @@ class TabBarWidget extends StatelessWidget implements PreferredSizeWidget {
             return InkWell(
               onTap: () => onTap(link.routeName),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                constraints: BoxConstraints(
+                  minWidth: MediaQuery.of(context).size.width / (links.length > 4 ? 4 : links.length),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
                   border: Border(
                     bottom: BorderSide(
@@ -156,11 +159,13 @@ class TabBarWidget extends StatelessWidget implements PreferredSizeWidget {
                     ),
                   ),
                 ),
-                child: Text(
-                  link.label,
-                  style: TextStyle(
-                    color: isSelected ? Theme.of(context).primaryColor : null,
-                    fontWeight: isSelected ? FontWeight.bold : null,
+                child: Center(
+                  child: Text(
+                    link.label,
+                    style: TextStyle(
+                      color: isSelected ? Theme.of(context).primaryColor : null,
+                      fontWeight: isSelected ? FontWeight.bold : null,
+                    ),
                   ),
                 ),
               ),
