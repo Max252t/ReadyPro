@@ -18,42 +18,44 @@ class CuratorReportsPage extends StatelessWidget {
     return RootShell(
       role: UiRole.curator,
       title: 'Отчеты куратора',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Составьте итоговые отчеты по вашим секциям',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.6),
-                ),
-          ),
-          const SizedBox(height: 16),
-          if (mySections.isEmpty)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Center(
-                  child: Text(
-                    'У вас нет назначенных секций',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurface
-                              .withValues(alpha: 0.6),
-                        ),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Составьте итоговые отчеты по вашим секциям',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.6),
+                  ),
+            ),
+            const SizedBox(height: 16),
+            if (mySections.isEmpty)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Center(
+                    child: Text(
+                      'У вас нет назначенных секций',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.6),
+                          ),
+                    ),
                   ),
                 ),
-              ),
-            )
-          else
-            for (final section in mySections) ...[
-              _SectionReportCard(sectionId: section.id),
-              const SizedBox(height: 16),
-            ],
-        ],
+              )
+            else
+              for (final section in mySections) ...[
+                _SectionReportCard(sectionId: section.id),
+                const SizedBox(height: 16),
+              ],
+          ],
+        ),
       ),
     );
   }
@@ -267,5 +269,3 @@ String _formatDate(DateTime d) {
 extension<T> on List<T> {
   T? get firstOrNull => isEmpty ? null : first;
 }
-
-

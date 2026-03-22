@@ -221,6 +221,9 @@ class _NavContent extends StatelessWidget {
                 : null,
             child: (user.avatarUrl == null || user.avatarUrl!.isEmpty) ? Icon(Icons.person, color: Theme.of(context).primaryColor, size: 40) : null,
           ),
+          otherAccountsPictures: const [
+            ThemeToggleButton(),
+          ],
         ),
         Expanded(
           child: ListView(
@@ -247,11 +250,6 @@ class _NavContent extends StatelessWidget {
               ),
             ],
           ),
-        ),
-        const Divider(),
-        const Padding(
-          padding: EdgeInsets.all(16.0),
-          child: ThemeToggleButton(),
         ),
       ],
     );
