@@ -317,16 +317,14 @@ List<_NavLink> _navLinksForRole(UiRole role) {
     )
   );
 
-  if (role == UiRole.participant) {
-    links.add(
-      const _NavLink(
-        routeName: AppRoutes.participantMySchedule, 
-        icon: Icons.calendar_today, 
-        label: 'Моё расписание', 
-        isEventSpecific: false
-      )
-    );
-  }
+  links.add(
+    const _NavLink(
+      routeName: AppRoutes.participantMySchedule, 
+      icon: Icons.calendar_today, 
+      label: 'Моё расписание', 
+      isEventSpecific: false
+    )
+  );
 
   return links;
 }
