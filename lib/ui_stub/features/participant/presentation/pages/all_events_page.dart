@@ -21,11 +21,11 @@ class AllEventsPage extends StatefulWidget {
 
 class _AllEventsPageState extends State<AllEventsPage> {
   final TextEditingController _searchController = TextEditingController();
+  List<Event>? _allEvents;
 
   @override
   void initState() {
     super.initState();
-    // Принудительно загружаем список всех мероприятий при входе на экран
     context.read<EventBloc>().add(LoadAllEvents());
   }
 
@@ -69,14 +69,20 @@ class _AllEventsPageState extends State<AllEventsPage> {
           ),
           Expanded(
             child: BlocBuilder<EventBloc, EventState>(
+              buildWhen: (previous, current) {
+                // Строгое условие перерисовки: только если это состояния загрузки, ошибки или НАШИХ событий
+                return current is AllEventsLoaded || current is EventLoading || current is EventFailure;
+              },
               builder: (context, state) {
-                // Если мы в процессе загрузки или в начальном состоянии, всегда показываем лоадер
-                if (state is EventLoading || state is EventInitial) {
+                if (state is AllEventsLoaded) {
+                  _allEvents = state.events;
+                }
+
+                if (_allEvents == null && state is EventLoading) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                // Обработка ошибок
-                if (state is EventFailure) {
+                if (state is EventFailure && _allEvents == null) {
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -94,15 +100,8 @@ class _AllEventsPageState extends State<AllEventsPage> {
                   );
                 }
 
-                // Отображаем список только если состояние AllEventsLoaded
-                if (state is AllEventsLoaded) {
-                  final events = state.events;
-
-                  if (events.isEmpty) {
-                    return const Center(child: Text('Мероприятий пока нет'));
-                  }
-
-                  var filtered = events;
+                if (_allEvents != null) {
+                  var filtered = _allEvents!;
                   if (_searchController.text.isNotEmpty) {
                     filtered = filtered
                         .where((e) => e.title.toLowerCase().contains(_searchController.text.toLowerCase()))
@@ -110,7 +109,7 @@ class _AllEventsPageState extends State<AllEventsPage> {
                   }
 
                   if (filtered.isEmpty) {
-                    return const Center(child: Text('По вашему запросу ничего не найдено'));
+                    return const Center(child: Text('Ничего не найдено'));
                   }
 
                   return ListView.builder(
@@ -122,8 +121,6 @@ class _AllEventsPageState extends State<AllEventsPage> {
                   );
                 }
 
-                // Если состояние другое (например, EventsLoaded от другого экрана), 
-                // показываем лоадер, так как мы ожидаем AllEventsLoaded для этого экрана
                 return const Center(child: CircularProgressIndicator());
               },
             ),
