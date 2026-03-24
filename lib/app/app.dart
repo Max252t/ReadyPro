@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ready_pro/blocs/auth/auth_bloc.dart';
@@ -17,6 +18,8 @@ import 'package:ready_pro/repositories/task_repository.dart';
 import 'package:ready_pro/repositories/schedule_repository.dart';
 import 'package:ready_pro/repositories/message_repository.dart';
 import 'package:ready_pro/repositories/feedback_repository.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:io' show Platform;
 
 import 'routes.dart';
 import 'theme/app_theme.dart';
@@ -90,6 +93,28 @@ class _ReadyProAppState extends State<ReadyProApp> {
       child: ListenableBuilder(
         listenable: _themeController,
         builder: (context, _) {
+          // Безопасная проверка платформы (не падает в Web)
+          final isApple = !kIsWeb && (Platform.isIOS || Platform.isMacOS);
+
+          if (isApple) {
+            return CupertinoApp(
+              navigatorKey: _navigatorKey,
+              title: 'ReadyPro',
+              debugShowCheckedModeBanner: false,
+              theme: CupertinoThemeData(
+                brightness: _themeController.mode == ThemeMode.dark ? Brightness.dark : Brightness.light,
+                primaryColor: CupertinoColors.activeBlue,
+              ),
+              builder: (context, child) => _AuthWrapper(
+                navigatorKey: _navigatorKey,
+                themeController: _themeController,
+                child: child,
+              ),
+              initialRoute: AppRoutes.login,
+              routes: AppRoutes.map,
+            );
+          }
+
           return MaterialApp(
             navigatorKey: _navigatorKey,
             title: 'ReadyPro',
@@ -97,39 +122,55 @@ class _ReadyProAppState extends State<ReadyProApp> {
             theme: AppTheme.light(),
             darkTheme: AppTheme.dark(),
             themeMode: _themeController.mode,
-            builder: (context, child) {
-              return BlocListener<AuthBloc, AuthState>(
-                listener: (context, state) {
-                  if (state is AuthUnauthenticated) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      final nav = _navigatorKey.currentState;
-                      nav?.pushNamedAndRemoveUntil(
-                        AppRoutes.login,
-                        (route) => false,
-                      );
-                    });
-                  } else if (state is AuthAuthenticated) {
-                     WidgetsBinding.instance.addPostFrameCallback((_) {
-                      final nav = _navigatorKey.currentState;
-
-                      nav?.pushNamedAndRemoveUntil(
-                        AppRoutes.allEvents,
-                        (route) => false,
-                        arguments: {'role': state.user.role},
-                      );
-                    });
-                  }
-                },
-                child: AppThemeScope(
-                  notifier: _themeController,
-                  child: child ?? const SizedBox.shrink(),
-                ),
-              );
-            },
+            builder: (context, child) => _AuthWrapper(
+              navigatorKey: _navigatorKey,
+              themeController: _themeController,
+              child: child,
+            ),
             initialRoute: AppRoutes.login,
             routes: AppRoutes.map,
           );
         },
+      ),
+    );
+  }
+}
+
+class _AuthWrapper extends StatelessWidget {
+  final GlobalKey<NavigatorState> navigatorKey;
+  final AppThemeController themeController;
+  final Widget? child;
+
+  const _AuthWrapper({
+    required this.navigatorKey,
+    required this.themeController,
+    this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocListener<AuthBloc, AuthState>(
+      listener: (context, state) {
+        if (state is AuthUnauthenticated) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            navigatorKey.currentState?.pushNamedAndRemoveUntil(
+              AppRoutes.login,
+              (route) => false,
+            );
+          });
+        } else if (state is AuthAuthenticated) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            navigatorKey.currentState?.pushNamedAndRemoveUntil(
+              AppRoutes.allEvents,
+              (route) => false,
+              arguments: {'role': state.user.role},
+            );
+          });
+        }
+      },
+      child: AppThemeScope(
+        notifier: themeController,
+        child: child ?? const SizedBox.shrink(),
       ),
     );
   }
