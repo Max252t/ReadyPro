@@ -5,6 +5,7 @@ import 'package:ready_pro/blocs/event/event_event.dart';
 import 'package:ready_pro/blocs/event/event_state.dart';
 import 'package:ready_pro/models/event.dart';
 import 'package:ready_pro/core/enums.dart';
+import 'package:ready_pro/app/layout/app_breakpoints.dart';
 
 import '../../../../../app/routes.dart';
 import '../../../../shared/mock/ui_models.dart';
@@ -70,7 +71,6 @@ class _AllEventsPageState extends State<AllEventsPage> {
           Expanded(
             child: BlocBuilder<EventBloc, EventState>(
               buildWhen: (previous, current) {
-                // Строгое условие перерисовки: только если это состояния загрузки, ошибки или НАШИХ событий
                 return current is AllEventsLoaded || current is EventLoading || current is EventFailure;
               },
               builder: (context, state) {
@@ -112,12 +112,32 @@ class _AllEventsPageState extends State<AllEventsPage> {
                     return const Center(child: Text('Ничего не найдено'));
                   }
 
-                  return ListView.builder(
-                    itemCount: filtered.length,
-                    itemBuilder: (context, index) {
-                      final event = filtered[index];
-                      return _EventCard(event: event, role: widget.role);
-                    },
+                  return LayoutBuilder(
+                    builder: (context, constraints) {
+                      final crossAxisCount = AppBreakpoints.twoColumnCards(constraints.maxWidth);
+                      
+                      if (crossAxisCount > 1) {
+                        return GridView.builder(
+                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: crossAxisCount,
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 16,
+                            childAspectRatio: 1.4,
+                          ),
+                          itemCount: filtered.length,
+                          itemBuilder: (context, index) {
+                            return _EventCard(event: filtered[index], role: widget.role, isGrid: true);
+                          },
+                        );
+                      }
+
+                      return ListView.builder(
+                        itemCount: filtered.length,
+                        itemBuilder: (context, index) {
+                          return _EventCard(event: filtered[index], role: widget.role, isGrid: false);
+                        },
+                      );
+                    }
                   );
                 }
 
@@ -134,13 +154,23 @@ class _AllEventsPageState extends State<AllEventsPage> {
 class _EventCard extends StatelessWidget {
   final Event event;
   final UiRole role;
+  final bool isGrid;
 
-  const _EventCard({required this.event, required this.role});
+  const _EventCard({required this.event, required this.role, required this.isGrid});
 
   @override
   Widget build(BuildContext context) {
+    final cardContent = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildImage(context),
+        _buildDetails(context),
+      ],
+    );
+
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: isGrid ? EdgeInsets.zero : const EdgeInsets.only(bottom: 16),
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
@@ -151,100 +181,114 @@ class _EventCard extends StatelessWidget {
             arguments: {'eventId': event.id, 'role': role},
           );
         },
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Stack(
-              children: [
-                Container(
-                  height: 160,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    image: DecorationImage(
-                      image: (event.imageUrl != null && event.imageUrl!.isNotEmpty)
-                          ? NetworkImage(event.imageUrl!)
-                          : const AssetImage('assets/images/event.png') as ImageProvider,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: 12,
-                  right: 12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.7),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      _getStatusLabel(event.status),
-                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    event.title,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 8),
-                  if (event.description != null)
-                    Text(
-                      event.description!,
-                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      if (event.startDate != null)
-                        Expanded(
-                          child: Row(
-                            children: [
-                              const Icon(Icons.calendar_today, size: 16, color: Colors.blue),
-                              const SizedBox(width: 6),
-                              Text(
-                                '${event.startDate!.day}.${event.startDate!.month}.${event.startDate!.year}',
-                                style: const TextStyle(fontSize: 13),
-                              ),
-                            ],
-                          ),
-                        ),
-                      if (event.location != null && event.location!.isNotEmpty)
-                        Expanded(
-                          child: Row(
-                            children: [
-                              const Icon(Icons.location_on_outlined, size: 16, color: Colors.red),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  event.location!,
-                                  style: const TextStyle(fontSize: 13),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
+        child: isGrid ? cardContent : cardContent,
+      ),
+    );
+  }
+
+  Widget _buildImage(BuildContext context) {
+    final imageWidget = Container(
+      decoration: BoxDecoration(
+        image: DecorationImage(
+          image: (event.imageUrl != null && event.imageUrl!.isNotEmpty)
+              ? NetworkImage(event.imageUrl!)
+              : const AssetImage('assets/images/event.png') as ImageProvider,
+          fit: BoxFit.cover,
         ),
       ),
     );
+
+    final content = Stack(
+      fit: StackFit.expand,
+      children: [
+        imageWidget,
+        Positioned(
+          top: 12,
+          right: 12,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.7),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              _getStatusLabel(event.status),
+              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ),
+      ],
+    );
+
+    if (isGrid) {
+      return Expanded(flex: 3, child: content);
+    }
+    return SizedBox(height: 180, width: double.infinity, child: content);
+  }
+
+  Widget _buildDetails(BuildContext context) {
+    final content = Padding(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            event.title,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          if (event.description != null)
+            Text(
+              event.description!,
+              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          if (!isGrid) const SizedBox(height: 12) else const Spacer(),
+          Row(
+            children: [
+              if (event.startDate != null)
+                Expanded(
+                  child: Row(
+                    children: [
+                      const Icon(Icons.calendar_today, size: 14, color: Colors.blue),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${event.startDate!.day}.${event.startDate!.month}.${event.startDate!.year}',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+              if (event.location != null && event.location!.isNotEmpty)
+                Expanded(
+                  child: Row(
+                    children: [
+                      const Icon(Icons.location_on_outlined, size: 14, color: Colors.red),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          event.location!,
+                          style: const TextStyle(fontSize: 12),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    if (isGrid) {
+      return Expanded(flex: 2, child: content);
+    }
+    return content;
   }
 
   String _getStatusLabel(EventStatus status) {
