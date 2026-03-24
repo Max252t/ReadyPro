@@ -20,13 +20,16 @@ import 'package:ready_pro/repositories/message_repository.dart';
 import 'package:ready_pro/repositories/feedback_repository.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io' show Platform;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'routes.dart';
 import 'theme/app_theme.dart';
 import 'theme/app_theme_scope.dart';
 
 class ReadyProApp extends StatefulWidget {
-  const ReadyProApp({super.key});
+  final SharedPreferences prefs;
+
+  const ReadyProApp({super.key, required this.prefs});
 
   @override
   State<ReadyProApp> createState() => _ReadyProAppState();
@@ -39,7 +42,7 @@ class _ReadyProAppState extends State<ReadyProApp> {
   @override
   void initState() {
     super.initState();
-    _themeController = AppThemeController();
+    _themeController = AppThemeController(widget.prefs);
   }
 
   @override
