@@ -357,7 +357,7 @@ class _ScheduleTalkTile extends StatelessWidget {
                   Icon(Icons.schedule, size: 16, color: Theme.of(context).hintColor),
                   const SizedBox(width: 4),
                   Text(
-                    '${talk.startTime != null ? _formatTime(talk.startTime!) : '--:--'}',
+                    talk.startTime != null ? _formatTime(talk.startTime!) : '--:--',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],

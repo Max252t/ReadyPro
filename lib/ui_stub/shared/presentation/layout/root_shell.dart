@@ -64,7 +64,7 @@ class RootShell extends StatelessWidget {
       onOpenProfile: () => Navigator.pushReplacementNamed(
         context,
         AppRoutes.profile,
-        arguments: {'role': role, if (eventId != null) 'eventId': eventId},
+        arguments: {'role': role, 'eventId': ?eventId},
       ),
       onLogout: () => context.read<AuthBloc>().add(AuthSignOutRequested()),
     );
