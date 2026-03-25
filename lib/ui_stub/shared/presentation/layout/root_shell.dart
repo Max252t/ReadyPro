@@ -64,7 +64,7 @@ class RootShell extends StatelessWidget {
       onOpenProfile: () => Navigator.pushReplacementNamed(
         context,
         AppRoutes.profile,
-        arguments: {'role': role, 'eventId': ?eventId},
+        arguments: {'role': role, if (eventId != null) 'eventId': eventId},
       ),
       onLogout: () => context.read<AuthBloc>().add(AuthSignOutRequested()),
     );
@@ -163,7 +163,7 @@ class TabBarWidget extends StatelessWidget implements PreferredSizeWidget {
                   child: Text(
                     link.label,
                     style: TextStyle(
-                      color: isSelected ? Theme.of(context).primaryColor : null,
+                      color: isSelected ? Theme.of(context).primaryColor : (Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black87),
                       fontWeight: isSelected ? FontWeight.bold : null,
                     ),
                   ),

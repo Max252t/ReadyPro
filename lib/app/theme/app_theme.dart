@@ -8,6 +8,7 @@ class AppTheme {
 
     return base.copyWith(
       scaffoldBackgroundColor: AppColors.background,
+      primaryColor: AppColors.primary,
       colorScheme: base.colorScheme.copyWith(
         primary: AppColors.primary,
         onPrimary: AppColors.primaryForeground,
@@ -53,6 +54,7 @@ class AppTheme {
 
     return base.copyWith(
       scaffoldBackgroundColor: AppColors.darkBackground,
+      primaryColor: AppColors.darkPrimary,
       colorScheme: base.colorScheme.copyWith(
         primary: AppColors.darkPrimary,
         onPrimary: AppColors.darkPrimaryForeground,
@@ -96,4 +98,3 @@ class AppTheme {
     );
   }
 }
-

@@ -19,12 +19,14 @@ class AppColors {
   static const loginGradientTo = Color(0xFFE0E7FF); // indigo-100
 
   /// Токены тёмной темы (как `figma-export` `.dark`).
-  static const darkBackground = Color(0xFF1E293B); // Изменено с 0xFF0F172A на более светлый Slate 800
+  static const darkBackground = Color(0xFF1E293B); 
   static const darkForeground = Color(0xFFF1F5F9);
-  static const darkCard = Color(0xFF334155); // Изменено с 0xFF1E293B на Slate 700
+  static const darkCard = Color(0xFF334155); 
   static const darkMuted = Color(0xFF475569);
   static const darkMutedForeground = Color(0xFF94A3B8);
-  static const darkPrimary = Color(0xFF60A5FA);
+  
+  // Изменено на светло-фиолетовый для темной темы
+  static const darkPrimary = Color(0xFF9D55FF);
   static const darkPrimaryForeground = Color(0xFF0F172A);
   static const darkBorder = Color(0xFF475569);
   static const darkInputBackground = Color(0xFF334155);
