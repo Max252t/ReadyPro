@@ -1,12 +1,14 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/foundation.dart';
 import 'package:ready_pro/repositories/auth_repository.dart';
+import 'package:ready_pro/models/user.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 import 'dart:async';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository _authRepository;
+  Profile? _cachedUser;
 
   AuthBloc(this._authRepository) : super(AuthInitial()) {
     on<AuthCheckRequested>(_onAuthCheckRequested);
@@ -21,10 +23,16 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthCheckRequested event,
     Emitter<AuthState> emit,
   ) async {
+    if (_cachedUser != null) {
+      emit(AuthAuthenticated(_cachedUser!));
+      return;
+    }
+    
     emit(AuthLoading());
     try {
       final user = await _authRepository.getCurrentUser();
       if (user != null) {
+        _cachedUser = user;
         emit(AuthAuthenticated(user));
       } else {
         emit(AuthUnauthenticated());
@@ -45,6 +53,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         password: event.password,
       );
       if (user != null) {
+        _cachedUser = user;
         emit(AuthAuthenticated(user));
       } else {
         emit(AuthFailure('Не удалось войти'));
@@ -66,6 +75,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         fullName: event.fullName,
       );
       if (user != null) {
+        _cachedUser = user;
         emit(AuthAuthenticated(user));
       } else {
         emit(AuthFailure('Не удалось зарегистрироваться'));
@@ -87,8 +97,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           fullName: event.fullName,
           company: event.company,
         );
+        // Принудительно обновляем кэш после редактирования
         final updatedUser = await _authRepository.getCurrentUser();
         if (updatedUser != null) {
+          _cachedUser = updatedUser;
           emit(AuthAuthenticated(updatedUser));
         }
       } catch (e) {
@@ -102,21 +114,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthSignOutRequested event,
     Emitter<AuthState> emit,
   ) async {
-    // Для выхода критично не оставлять UI в `AuthLoading` навсегда:
-    // сразу переводим приложение в состояние "не аутентифицирован".
-    // А `supabase.auth.signOut()` пусть выполняется с таймаутом (на UI это не должно влиять).
+    _cachedUser = null; // Очищаем кэш при выходе
     emit(AuthUnauthenticated());
     try {
-      // Иногда `supabase.auth.signOut()` может зависнуть из-за сети.
-      // Добавляем таймаут, чтобы UI не оставался в `AuthLoading` навсегда.
       await _authRepository
           .signOut()
           .timeout(const Duration(seconds: 10));
     } on TimeoutException catch (e) {
-      // Не блокируемся: принудительно уводим пользователя на экран входа.
       debugPrint('SignOut timeout: $e');
     } catch (e) {
-      // На ошибках тоже завершаем попытку выхода.
       debugPrint('SignOut error: $e');
     }
   }
@@ -131,8 +137,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       try {
         final newUrl = await _authRepository.updateAvatar(event.imageFile);
         if (newUrl != null) {
+          // Принудительно обновляем кэш после смены аватара
           final updatedUser = await _authRepository.getCurrentUser();
           if (updatedUser != null) {
+            _cachedUser = updatedUser;
             emit(AuthAuthenticated(updatedUser));
           }
         }
