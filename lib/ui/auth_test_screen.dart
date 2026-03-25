@@ -38,12 +38,12 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
   Profile? _currentUser;
   bool _isLoading = false;
   List<UserEvent> _myEvents = [];
-  Map<String, List<Section>> _eventSections = {};
-  Map<String, List<Talk>> _sectionTalks = {};
-  Map<String, List<Task>> _eventTasks = {};
-  Map<String, List<Profile>> _eventParticipants = {};
-  Map<String, List<model.Feedback>> _talkFeedbacks = {};
-  Map<String, bool> _isInSchedule = {};
+  final Map<String, List<Section>> _eventSections = {};
+  final Map<String, List<Talk>> _sectionTalks = {};
+  final Map<String, List<Task>> _eventTasks = {};
+  final Map<String, List<Profile>> _eventParticipants = {};
+  final Map<String, List<model.Feedback>> _talkFeedbacks = {};
+  final Map<String, bool> _isInSchedule = {};
 
   @override
   void initState() {
@@ -414,7 +414,7 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
                               width: 50,
                               height: 50,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) {
+                              errorBuilder: (_, _, _) {
                                 return Image.asset(
                                   'assets/images/event.png',
                                   width: 50,

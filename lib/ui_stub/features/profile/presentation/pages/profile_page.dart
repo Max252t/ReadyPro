@@ -299,7 +299,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                                     width: 80,
                                                     height: 80,
                                                     fit: BoxFit.cover,
-                                                    errorBuilder: (_, __, ___) {
+                                                    errorBuilder: (_, _, _) {
                                                       return const Icon(Icons.person, size: 40);
                                                     },
                                                   ),
@@ -382,7 +382,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                         width: 40,
                                         height: 40,
                                         fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) {
+                                        errorBuilder: (_, _, _) {
                                           return Image.asset(
                                             'assets/images/event.png',
                                             width: 40,

@@ -106,7 +106,7 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
                       fit: BoxFit.cover,
                       width: double.infinity,
                       height: 200,
-                      errorBuilder: (_, __, ___) {
+                      errorBuilder: (_, _, _) {
                         return Image.asset(
                           'assets/images/event.png',
                           fit: BoxFit.cover,
