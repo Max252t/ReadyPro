@@ -1,9 +1,12 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ready_pro/blocs/auth/auth_bloc.dart';
 import 'package:ready_pro/blocs/auth/auth_event.dart';
 import 'package:ready_pro/blocs/auth/auth_state.dart';
 import 'package:ready_pro/models/user.dart';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 import '../../../../app/routes.dart';
 import '../../../../app/widgets/theme_toggle_button.dart';
@@ -26,14 +29,18 @@ class RootShell extends StatelessWidget {
     this.actions,
   });
 
+  bool get _isApple => !kIsWeb && (Platform.isIOS || Platform.isMacOS);
+
   @override
   Widget build(BuildContext context) {
     final authState = context.watch<AuthBloc>().state;
     if (authState is AuthUnauthenticated) return const SizedBox.shrink();
     if (authState is! AuthAuthenticated) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return _isApple
+          ? const CupertinoPageScaffold(child: Center(child: CupertinoActivityIndicator()))
+          : const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    
+
     final user = authState.user;
     final navLinks = _navLinksForRole(role);
     final routeName = ModalRoute.of(context)?.settings.name ?? '';
@@ -46,8 +53,6 @@ class RootShell extends StatelessWidget {
 
     final hasEvent = eventId != null && eventId.isNotEmpty;
     final isEventSpecificRoute = eventLinks.any((l) => l.routeName == routeName);
-    
-    // TabBar показываем ТОЛЬКО если: есть мероприятие И мы на событийном экране
     final showTabBar = hasEvent && isEventSpecificRoute && eventLinks.isNotEmpty;
 
     final nav = _NavContent(
@@ -58,7 +63,7 @@ class RootShell extends StatelessWidget {
         final Map<String, dynamic> nextArgs = {'role': role};
         if (eventId != null) nextArgs['eventId'] = eventId;
         if (extraArgs != null) nextArgs.addAll(extraArgs);
-        
+
         Navigator.pushReplacementNamed(context, route, arguments: nextArgs);
       },
       onOpenProfile: () => Navigator.pushReplacementNamed(
@@ -69,54 +74,162 @@ class RootShell extends StatelessWidget {
       onLogout: () => context.read<AuthBloc>().add(AuthSignOutRequested()),
     );
 
+    final displayTitle = showTabBar ? title : (title.isNotEmpty ? title : 'ReadyPro');
+
+    if (_isApple) {
+      return CupertinoPageScaffold(
+        navigationBar: CupertinoNavigationBar(
+          middle: Text(displayTitle),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (actions != null) ...actions!,
+              CupertinoButton(
+                padding: EdgeInsets.zero,
+                child: const Icon(CupertinoIcons.bars),
+                onPressed: () {
+                  showCupertinoModalPopup(
+                    context: context,
+                    builder: (context) => CupertinoActionSheet(
+                      title: Text(user.fullName),
+                      message: Text(user.email),
+                      actions: [
+                        ...globalLinks.map((link) => CupertinoActionSheetAction(
+                              onPressed: () {
+                                Navigator.pop(context);
+                                Navigator.pushReplacementNamed(context, link.routeName, arguments: {
+                                  'role': role,
+                                  if (eventId != null) 'eventId': eventId,
+                                  if (link.extraArgs != null) ...link.extraArgs!,
+                                });
+                              },
+                              child: Text(link.label),
+                            )),
+                        CupertinoActionSheetAction(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            Navigator.pushReplacementNamed(
+                              context,
+                              AppRoutes.profile,
+                              arguments: {'role': role, if (eventId != null) 'eventId': eventId},
+                            );
+                          },
+                          child: const Text('Профиль'),
+                        ),
+                      ],
+                      cancelButton: CupertinoActionSheetAction(
+                        isDestructiveAction: true,
+                        onPressed: () {
+                          Navigator.pop(context);
+                          context.read<AuthBloc>().add(AuthSignOutRequested());
+                        },
+                        child: const Text('Выйти'),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              if (showTabBar)
+                TabBarWidget(
+                  links: eventLinks,
+                  selectedRouteName: routeName,
+                  onTap: (route) {
+                    Navigator.pushReplacementNamed(
+                      context,
+                      route,
+                      arguments: {'role': role, 'eventId': eventId},
+                    );
+                  },
+                ),
+              Expanded(
+                child: _PageFrame(
+                  child: (isEventSpecificRoute && !hasEvent) ? _buildNoEventStub(context) : child,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
-        // Если показываем TabBar, то заголовок - название экрана, иначе общее название
-        title: Text(showTabBar ? title : (title.isNotEmpty ? title : 'ReadyPro')),
+        title: Text(displayTitle),
         actions: [
           if (actions != null) ...actions!,
           const SizedBox(width: 8),
         ],
-        bottom: showTabBar 
-          ? TabBarWidget(
-              links: eventLinks,
-              selectedRouteName: routeName,
-              onTap: (route) {
-                Navigator.pushReplacementNamed(
-                  context,
-                  route,
-                  arguments: {'role': role, 'eventId': eventId},
-                );
-              },
-            )
-          : null,
+        bottom: showTabBar
+            ? TabBarWidget(
+                links: eventLinks,
+                selectedRouteName: routeName,
+                onTap: (route) {
+                  Navigator.pushReplacementNamed(
+                    context,
+                    route,
+                    arguments: {'role': role, 'eventId': eventId},
+                  );
+                },
+              )
+            : null,
       ),
       drawer: Drawer(child: nav),
       body: SafeArea(
         child: _PageFrame(
-          child: (isEventSpecificRoute && !hasEvent) 
-            ? _buildNoEventStub(context) 
-            : child,
+          child: (isEventSpecificRoute && !hasEvent) ? _buildNoEventStub(context) : child,
         ),
       ),
     );
   }
 
   Widget _buildNoEventStub(BuildContext context) {
+    if (_isApple) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(CupertinoIcons.calendar, size: 64, color: CupertinoColors.systemGrey),
+            const SizedBox(height: 16),
+            const Text('Мероприятие не выбрано',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            const Text('Выберите мероприятие из списка, чтобы продолжить',
+                textAlign: TextAlign.center),
+            const SizedBox(height: 24),
+            CupertinoButton.filled(
+              onPressed: () => Navigator.pushReplacementNamed(
+                context,
+                AppRoutes.allEvents,
+                arguments: {'role': role},
+              ),
+              child: const Text('Перейти к списку мероприятий'),
+            ),
+          ],
+        ),
+      );
+    }
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Icon(Icons.event_note, size: 64, color: Colors.grey),
           const SizedBox(height: 16),
-          const Text('Мероприятие не выбрано', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text('Мероприятие не выбрано',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          const Text('Выберите мероприятие из списка, чтобы продолжить', textAlign: TextAlign.center),
+          const Text('Выберите мероприятие из списка, чтобы продолжить',
+              textAlign: TextAlign.center),
           const SizedBox(height: 24),
           ElevatedButton(
             onPressed: () => Navigator.pushReplacementNamed(
-              context, 
-              AppRoutes.allEvents, 
+              context,
+              AppRoutes.allEvents,
               arguments: {'role': role},
             ),
             child: const Text('Перейти к списку мероприятий'),
@@ -132,20 +245,38 @@ class TabBarWidget extends StatelessWidget implements PreferredSizeWidget {
   final String selectedRouteName;
   final Function(String) onTap;
 
-  const TabBarWidget({super.key, required this.links, required this.selectedRouteName, required this.onTap});
+  const TabBarWidget(
+      {super.key, required this.links, required this.selectedRouteName, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
+    final isApple = !kIsWeb && (Platform.isIOS || Platform.isMacOS);
+    final isDark = isApple 
+        ? CupertinoTheme.of(context).brightness == Brightness.dark 
+        : Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = isApple 
+        ? CupertinoTheme.of(context).primaryColor 
+        : Theme.of(context).primaryColor;
+    
     return Container(
       width: double.infinity,
-      color: Theme.of(context).appBarTheme.backgroundColor,
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : (isApple ? CupertinoColors.white : Colors.white),
+        border: Border(
+          bottom: BorderSide(
+            color: isDark ? Colors.white10 : Colors.black12,
+            width: 0.5,
+          ),
+        ),
+      ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
           children: links.map((link) {
             final isSelected = selectedRouteName == link.routeName;
-            return InkWell(
+            return GestureDetector(
               onTap: () => onTap(link.routeName),
+              behavior: HitTestBehavior.opaque,
               child: Container(
                 constraints: BoxConstraints(
                   minWidth: MediaQuery.of(context).size.width / (links.length > 4 ? 4 : links.length),
@@ -154,8 +285,8 @@ class TabBarWidget extends StatelessWidget implements PreferredSizeWidget {
                 decoration: BoxDecoration(
                   border: Border(
                     bottom: BorderSide(
-                      color: isSelected ? Theme.of(context).primaryColor : Colors.transparent,
-                      width: 3,
+                      color: isSelected ? primaryColor : Colors.transparent,
+                      width: 2.5,
                     ),
                   ),
                 ),
@@ -163,8 +294,11 @@ class TabBarWidget extends StatelessWidget implements PreferredSizeWidget {
                   child: Text(
                     link.label,
                     style: TextStyle(
-                      color: isSelected ? Theme.of(context).primaryColor : (Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black87),
-                      fontWeight: isSelected ? FontWeight.bold : null,
+                      color: isSelected
+                          ? primaryColor
+                          : (isDark ? (isApple ? CupertinoColors.systemGrey : Colors.white70) : (isApple ? CupertinoColors.label : Colors.black87)),
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                      fontSize: 14,
                     ),
                   ),
                 ),
@@ -224,7 +358,9 @@ class _NavContent extends StatelessWidget {
             backgroundImage: (user.avatarUrl != null && user.avatarUrl!.isNotEmpty)
                 ? NetworkImage(user.avatarUrl!)
                 : null,
-            child: (user.avatarUrl == null || user.avatarUrl!.isEmpty) ? Icon(Icons.person, color: Theme.of(context).primaryColor, size: 40) : null,
+            child: (user.avatarUrl == null || user.avatarUrl!.isEmpty)
+                ? Icon(Icons.person, color: Theme.of(context).primaryColor, size: 40)
+                : null,
           ),
           otherAccountsPictures: const [
             ThemeToggleButton(),
@@ -283,15 +419,18 @@ List<_NavLink> _navLinksForRole(UiRole role) {
   // Вкладки мероприятия (TabBar)
   if (role == UiRole.organizer) {
     links.addAll([
-      const _NavLink(routeName: AppRoutes.organizerDashboard, icon: Icons.dashboard, label: 'Дашборд'),
+      const _NavLink(
+          routeName: AppRoutes.organizerDashboard, icon: Icons.dashboard, label: 'Дашборд'),
       const _NavLink(routeName: AppRoutes.organizerSections, icon: Icons.groups, label: 'Секции'),
       const _NavLink(routeName: AppRoutes.organizerTasks, icon: Icons.checklist, label: 'Задачи'),
-      const _NavLink(routeName: AppRoutes.organizerSchedule, icon: Icons.calendar_month, label: 'Наполнение'),
+      const _NavLink(
+          routeName: AppRoutes.organizerSchedule, icon: Icons.calendar_month, label: 'Наполнение'),
       const _NavLink(routeName: AppRoutes.eventTeam, icon: Icons.badge, label: 'Команда'),
     ]);
   } else if (role == UiRole.curator) {
     links.addAll([
-      const _NavLink(routeName: AppRoutes.curatorDashboard, icon: Icons.dashboard, label: 'Дашборд'),
+      const _NavLink(
+          routeName: AppRoutes.curatorDashboard, icon: Icons.dashboard, label: 'Дашборд'),
       const _NavLink(routeName: AppRoutes.curatorReports, icon: Icons.description, label: 'Отчеты'),
       const _NavLink(routeName: AppRoutes.eventTeam, icon: Icons.badge, label: 'Команда'),
     ]);
@@ -302,29 +441,25 @@ List<_NavLink> _navLinksForRole(UiRole role) {
     ]);
   } else if (role == UiRole.participant) {
     links.addAll([
-      const _NavLink(routeName: AppRoutes.participantProgram, icon: Icons.slideshow, label: 'Программа'),
+      const _NavLink(
+          routeName: AppRoutes.participantProgram, icon: Icons.slideshow, label: 'Программа'),
       const _NavLink(routeName: AppRoutes.eventTeam, icon: Icons.badge, label: 'Команда'),
     ]);
   }
 
   // Глобальные ссылки (Drawer)
-  links.add(
-    const _NavLink(
-      routeName: AppRoutes.allEvents, 
-      icon: Icons.event, 
-      label: 'Все мероприятия', 
-      isEventSpecific: false,
-    )
-  );
+  links.add(const _NavLink(
+    routeName: AppRoutes.allEvents,
+    icon: Icons.event,
+    label: 'Все мероприятия',
+    isEventSpecific: false,
+  ));
 
-  links.add(
-    const _NavLink(
-      routeName: AppRoutes.participantMySchedule, 
-      icon: Icons.calendar_today, 
-      label: 'Моё расписание', 
-      isEventSpecific: false
-    )
-  );
+  links.add(const _NavLink(
+      routeName: AppRoutes.participantMySchedule,
+      icon: Icons.calendar_today,
+      label: 'Моё расписание',
+      isEventSpecific: false));
 
   return links;
 }

@@ -96,7 +96,6 @@ class _ReadyProAppState extends State<ReadyProApp> {
       child: ListenableBuilder(
         listenable: _themeController,
         builder: (context, _) {
-          // Безопасная проверка платформы (не падает в Web)
           final isApple = !kIsWeb && (Platform.isIOS || Platform.isMacOS);
 
           if (isApple) {
@@ -104,15 +103,24 @@ class _ReadyProAppState extends State<ReadyProApp> {
               navigatorKey: _navigatorKey,
               title: 'ReadyPro',
               debugShowCheckedModeBanner: false,
+              localizationsDelegates: const [
+                DefaultMaterialLocalizations.delegate,
+                DefaultCupertinoLocalizations.delegate,
+                DefaultWidgetsLocalizations.delegate,
+              ],
               theme: CupertinoThemeData(
                 brightness: _themeController.mode == ThemeMode.dark ? Brightness.dark : Brightness.light,
-                primaryColor: CupertinoColors.activeBlue,
+                primaryColor: const Color(0xFFD1B3FF), // Светло-фиолетовый
               ),
-              builder: (context, child) => _AuthWrapper(
-                navigatorKey: _navigatorKey,
-                themeController: _themeController,
-                child: child,
-              ),
+              builder: (context, child) {
+                return Material(
+                  child: _AuthWrapper(
+                    navigatorKey: _navigatorKey,
+                    themeController: _themeController,
+                    child: child,
+                  ),
+                );
+              },
               initialRoute: AppRoutes.login,
               routes: AppRoutes.map,
             );
